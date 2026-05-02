@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
-  Smartphone, LayoutGrid, Plus, Minus, Disc, Radio, Target, 
-  Brain, ArrowRight, BellRing, MousePointer2, ArrowLeft, Music, Headphones, Zap, Info, Cpu, Copy
+  Smartphone, LayoutGrid, Plus, Minus, BellRing, ArrowLeft, 
+  Music, Headphones, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- CONSTANTES Y UTILIDADES (Definidas al inicio para evitar ReferenceError) ---
+// --- CONSTANTES GLOBALES (Evitan errores de referencia) ---
 const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 const autoCorrelate = (buf, sampleRate) => {
@@ -49,7 +49,7 @@ const PROTAGONISTAS = [
   { id: 'vostok', nombre: 'VOSTOK ENGINE', titulo: 'Super-Resolución IA', descripcion: 'Detección de tono mediante redes neuronales que filtran el ruido ambiente para una precisión quirúrgica.', grafico: 'ai', color: '#ffffff' }
 ];
 
-// --- COMPONENTES VISUALES ---
+// --- COMPONENTES DE ICONOS ---
 const TuningForkIcon = ({ className, strokeColor = "currentColor" }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M12 22v-8" />
@@ -65,13 +65,6 @@ const RedditIcon = ({ className }) => (
   </svg>
 );
 
-const VostokLogo = ({ className = "w-10 h-10" }) => (
-  <div className={`${className} relative rounded-xl bg-[#050A05] flex items-center justify-center shadow-lg shadow-green-500/10 overflow-hidden border border-green-500/20 group`}>
-    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#39FF14 1px, transparent 1px), linear-gradient(90deg, #39FF14 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
-    <TuningForkIcon className="w-6 h-6 text-[#39FF14] relative z-10 transition-transform group-hover:scale-110" />
-  </div>
-);
-
 const GraphicIcon = ({ type, color }) => {
   const baseClass = "w-full h-full flex items-center justify-center opacity-40";
   switch (type) {
@@ -82,6 +75,13 @@ const GraphicIcon = ({ type, color }) => {
     default: return null;
   }
 };
+
+const VostokLogo = ({ className = "w-10 h-10" }) => (
+  <div className={`${className} relative rounded-xl bg-[#050A05] flex items-center justify-center shadow-lg shadow-green-500/10 overflow-hidden border border-green-500/20 group`}>
+    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#39FF14 1px, transparent 1px), linear-gradient(90deg, #39FF14 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
+    <TuningForkIcon className="w-6 h-6 text-[#39FF14] relative z-10 transition-transform group-hover:scale-110" />
+  </div>
+);
 
 // --- COMPONENTE AFINADOR ---
 function VostokTuner({ onBack }) {
@@ -135,7 +135,7 @@ function VostokTuner({ onBack }) {
   };
 
   const stopListening = () => {
-    cancelAnimationFrame(rafIdRef.current);
+    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
     if (mediaStreamSourceRef.current) mediaStreamSourceRef.current.mediaStream.getTracks().forEach(t => t.stop());
     if (audioContextRef.current) audioContextRef.current.close();
     setIsListening(false);
@@ -218,7 +218,7 @@ function VostokTuner({ onBack }) {
         {activePanel === 'left' && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[180]" onClick={() => setActivePanel('center')} />
-            <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 left-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col">
+            <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 left-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white">
               <div className="flex justify-between items-center mb-10">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Módulo</span>
@@ -230,7 +230,7 @@ function VostokTuner({ onBack }) {
                 {INSTRUMENTS.map(inst => {
                   const Icon = inst.icon;
                   return (
-                    <button key={inst.id} onClick={() => { setSelectedInstrument(inst.id); setActivePanel('center'); }} className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white shadow-[inset_0_0_20px_rgba(57,255,20,0.05)]' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}>
+                    <button key={inst.id} onClick={() => { setSelectedInstrument(inst.id); setActivePanel('center'); }} className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}>
                       <Icon className={`w-5 h-5 relative z-10 ${selectedInstrument === inst.id ? 'text-[#39FF14]' : ''}`} />
                       <span className="font-bold text-sm uppercase tracking-widest relative z-10">{inst.name}</span>
                       {selectedInstrument === inst.id && <Check className="w-4 h-4 ml-auto text-[#39FF14] relative z-10" />}
@@ -245,7 +245,7 @@ function VostokTuner({ onBack }) {
         {activePanel === 'right' && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[180]" onClick={() => setActivePanel('center')} />
-            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 right-4 w-full max-w-[320px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-10 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col">
+            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 right-4 w-full max-w-[320px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-10 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white">
               <div className="flex justify-between items-center mb-10">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Calibración</span>
@@ -257,9 +257,9 @@ function VostokTuner({ onBack }) {
                 <section>
                   <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3">Referencia A4</label>
                   <div className="flex items-center justify-between p-2 bg-white/5 rounded-full border border-white/10">
-                    <button onClick={() => setRefPitch(p => p - 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Minus className="w-4 h-4" /></button>
+                    <button onClick={() => setRefPitch(p => p - 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center transition-transform active:scale-90"><Minus className="w-4 h-4" /></button>
                     <span className="text-2xl font-black text-white tabular-nums tracking-tighter">{refPitch}<span className="text-xs text-slate-500 ml-1 font-normal">Hz</span></span>
-                    <button onClick={() => setRefPitch(p => p + 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Plus className="w-4 h-4" /></button>
+                    <button onClick={() => setRefPitch(p => p + 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center transition-transform active:scale-90"><Plus className="w-4 h-4" /></button>
                   </div>
                 </section>
                 <section>
@@ -270,8 +270,8 @@ function VostokTuner({ onBack }) {
                   <input type="range" min="0" max="100" value={smoothValue} onChange={(e) => setSmoothValue(parseInt(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-full appearance-none accent-[#39FF14] cursor-pointer" />
                 </section>
                 <section className="pt-8 border-t border-white/5">
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full py-5 bg-purple-600/10 border border-purple-500/20 rounded-3xl text-[10px] font-black text-purple-400 uppercase tracking-widest hover:bg-purple-600/20 transition-all flex items-center justify-center gap-3 group">
-                    <Upload className="w-4 h-4 group-hover:-translate-y-1 transition-transform" />
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full py-5 bg-purple-600/10 border border-purple-500/20 rounded-3xl text-[10px] font-black text-purple-400 uppercase tracking-widest hover:bg-purple-600/20 transition-all flex items-center justify-center gap-3">
+                    <Upload className="w-4 h-4" />
                     Calibrar Motor WAV
                   </button>
                   <input type="file" ref={fileInputRef} className="hidden" accept="audio/*" />
@@ -307,7 +307,7 @@ function SoundScienceSection() {
         <motion.div key={current.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="cursor-pointer group relative bg-neutral-900/40 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 transition-all hover:border-cyan-500/30 shadow-2xl">
           <div className="relative flex flex-col min-h-[280px] justify-between">
             <div>
-              <h2 className="text-[10px] font-mono text-cyan-500 mb-4 tracking-[0.3em] uppercase opacity-60">Hitos_Tecnológicos</h2>
+              <h2 className="text-[10px] font-mono text-cyan-500 mb-4 tracking-[0.3em] uppercase opacity-60 font-bold">Hitos_Tecnológicos</h2>
               <div className="text-4xl font-black text-white leading-none uppercase mb-8 tracking-tighter">{current.nombre}</div>
               <span className="inline-block px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-bold text-cyan-400 uppercase tracking-[0.3em] mb-6">{current.titulo}</span>
               <p className="text-lg text-slate-300 font-light leading-relaxed pl-6 border-l-2 border-cyan-500/20">{current.descripcion}</p>
@@ -331,18 +331,20 @@ export default function App() {
   const [copied, setCopied] = useState(false);
 
   const handleContact = () => {
-    // Intento con navigator.clipboard y fallback con document.execCommand para evitar errores de política de seguridad
     const email = 'contacto@vostoklabs.audio';
-    
     const copyWithFallback = (text) => {
       const textArea = document.createElement("textarea");
       textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "0";
       document.body.appendChild(textArea);
+      textArea.focus();
       textArea.select();
       try {
         document.execCommand('copy');
       } catch (err) {
-        console.error('Fallback copy failed', err);
+        console.error('Error al copiar:', err);
       }
       document.body.removeChild(textArea);
     };
@@ -350,12 +352,14 @@ export default function App() {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(email)
         .then(() => setCopied(true))
-        .catch(() => copyWithFallback(email));
+        .catch(() => {
+          copyWithFallback(email);
+          setCopied(true);
+        });
     } else {
       copyWithFallback(email);
       setCopied(true);
     }
-
     setTimeout(() => setCopied(false), 2000);
     document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -393,9 +397,10 @@ export default function App() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-5 justify-center w-full sm:w-auto">
+            {/* BOTÓN REFINADO: VOSTOKTUNER */}
             <button 
               onClick={() => setView('tuner')} 
-              className="px-8 py-3.5 bg-white text-black rounded-full border-4 border-purple-400/80 hover:bg-slate-100 transition-all shadow-xl active:scale-95 group flex items-center gap-3"
+              className="px-8 py-3 bg-white text-black rounded-full border-[3px] border-purple-400 hover:bg-slate-100 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
             >
               <TuningForkIcon className="w-8 h-8 md:w-9 md:h-9" strokeColor="#39FF14" />
               <div className="text-xl md:text-2xl leading-none uppercase tracking-tighter flex items-center">
@@ -406,7 +411,7 @@ export default function App() {
             
             <button 
               onClick={() => document.getElementById('ecosistema')?.scrollIntoView({behavior: 'smooth'})} 
-              className="px-8 py-3.5 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-[0.2em] backdrop-blur-md"
+              className="px-10 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-[0.2em] backdrop-blur-md"
             >
               Ecosistema
             </button>
@@ -416,13 +421,13 @@ export default function App() {
 
       <SoundScienceSection />
 
-      <section id="ecosistema" className="py-24 relative px-8 bg-black">
-        <div className="max-w-7xl mx-auto text-white">
+      <section id="ecosistema" className="py-24 relative px-8 bg-black text-white">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 flex flex-col items-center">
             <h2 className="text-3xl md:text-5xl font-black tracking-tighter mb-8 text-white uppercase tracking-[0.1em]">El Ecosistema</h2>
             <div className="max-w-2xl">
-              <p className="text-slate-400 text-xl font-medium leading-relaxed italic">"El afinador es solo el comienzo"</p>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mt-6">— Vostok Lab</p>
+              <p className="text-slate-400 text-xl font-medium leading-relaxed italic font-bold">"El afinador es solo el comienzo"</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mt-6 font-bold">— Vostok Lab</p>
             </div>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
@@ -430,16 +435,16 @@ export default function App() {
               { t: "Vostok Metronome", d: "Polirritmias y setlists inteligentes con sincronización estroboscópica.", s: "En Desarrollo", c: "#A855F7", i: Zap },
               { t: "Vostok Spectrum", d: "Analizador de espectro 3D táctil para ingeniería de mezclas.", s: "Fase Alpha", c: "#3B82F6", i: Waves },
               { t: "Vostok 4-Track", d: "Grabadora multipista minimalista inspirada en la era del cassette.", s: "Próximamente", c: "#F97316", i: Headphones }
-            ].map((app, index) => {
+            ].map((app, i) => {
               const Icon = app.i;
               return (
-                <div key={index} className="p-10 rounded-[3rem] bg-[#080808] border border-white/5 hover:border-[#39FF14]/20 transition-all flex flex-col group">
+                <div key={i} className="p-10 rounded-[3rem] bg-[#080808] border border-white/5 hover:border-[#39FF14]/20 transition-all flex flex-col group">
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-8 border transition-transform group-hover:scale-110" style={{ backgroundColor: `${app.c}10`, borderColor: `${app.c}20` }}>
                     <Icon className="w-6 h-6" style={{ color: app.c }} />
                   </div>
                   <h3 className="text-xl font-black text-white mb-4 uppercase tracking-widest">{app.t}</h3>
-                  <p className="text-slate-500 text-sm mb-8 leading-relaxed font-medium uppercase">{app.d}</p>
-                  <div className="mt-auto inline-flex self-start px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors" style={{ backgroundColor: `${app.c}10`, color: app.c, borderColor: `${app.c}20` }}>{app.s}</div>
+                  <p className="text-slate-500 text-sm mb-8 leading-relaxed font-bold uppercase">{app.d}</p>
+                  <div className="mt-auto inline-flex self-start px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors font-bold" style={{ backgroundColor: `${app.c}10`, color: app.c, borderColor: `${app.c}20` }}>{app.s}</div>
                 </div>
               );
             })}
@@ -455,8 +460,9 @@ export default function App() {
                 <VostokLogo className="w-12 h-12" />
                 <span className="text-3xl font-black tracking-tighter text-white uppercase tracking-widest">Vostok Labs</span>
               </div>
-              <p className="text-slate-700 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Digital Tools Laboratory © 2026</p>
+              <p className="text-slate-700 text-[10px] font-black uppercase tracking-[0.4em] mt-2 font-bold">Digital Tools Laboratory © 2026</p>
               
+              {/* BOTÓN REDDIT */}
               <a 
                 href="https://www.reddit.com/r/Vostok_Labs" 
                 target="_blank" 
@@ -464,7 +470,7 @@ export default function App() {
                 className="flex items-center gap-3 px-6 py-3 bg-[#FF4500]/10 border border-[#FF4500]/20 rounded-full hover:bg-[#FF4500]/20 transition-all group"
               >
                 <RedditIcon className="w-5 h-5 text-[#FF4500]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white">r/Vostok_Labs</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white font-bold">r/Vostok_Labs</span>
               </a>
             </div>
             
@@ -472,11 +478,11 @@ export default function App() {
               <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]">
                 <div className="flex items-center gap-4 mb-6">
                   <BellRing className="w-6 h-6 text-[#39FF14]/70" />
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90">Buzón de Experimentación</h4>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90 font-bold">Buzón de Experimentación</h4>
                 </div>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-10">"Envíenos sus observaciones acústicas. Nuestra comunidad construye el futuro del audio."</p>
+                <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10 font-bold">"Envíenos sus observaciones acústicas. Nuestra comunidad construye el futuro del audio."</p>
                 <div className="h-14 flex items-center justify-center border border-white/5 rounded-full bg-white/[0.03]">
-                  <span className="text-[9px] font-black text-slate-800 uppercase tracking-[0.4em]">Fase Beta Activa</span>
+                  <span className="text-[9px] font-black text-slate-800 uppercase tracking-[0.4em] font-bold">Fase Beta Activa</span>
                 </div>
               </div>
             </div>
