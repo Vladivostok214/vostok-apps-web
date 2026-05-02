@@ -15,78 +15,78 @@ export default function TempoSense({ onBack }) {
   const nextNoteTime = useRef(0);
   const timerID = useRef(null);
 
+  const playClick = useCallback(() => {
+    const osc = audioContext.current.createOscillator();
+    const gain = audioContext.current.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.current.destination);
+    
+    osc.frequency.value = 1000;
+    gain.gain.setValueAtTime(0.5, audioContext.current.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.1);
+    
+    osc.start();
+    osc.stop(audioContext.current.currentTime + 0.1);
+  }, []);
+
+  const scheduler = useCallback(() => {
+    while (nextNoteTime.current < audioContext.current.currentTime + 0.1) {
+      playClick();
+      nextNoteTime.current += 60.0 / bpm;
+    }
+    timerID.current = requestAnimationFrame(scheduler);
+  }, [bpm, playClick]);
+
+  useEffect(() => {
+    if (isMetronomeActive) {
+      if (!audioContext.current) audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
+      nextNoteTime.current = audioContext.current.currentTime;
+      scheduler();
+    } else {
+      cancelAnimationFrame(timerID.current);
+    }
+    return () => cancelAnimationFrame(timerID.current);
+  }, [isMetronomeActive, bpm, scheduler]);
+
   const startAnalysis = async () => {
     setIsAnalyzing(true);
-    setBpm(0);
     setKey(null);
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContext.current.createAnalyser();
-      analyserRef.current.fftSize = 4096;
+      analyserRef.current.fftSize = 8192;
       const source = audioContext.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       
       const bufferLength = analyserRef.current.frequencyBinCount;
-      const timeData = new Float32Array(analyserRef.current.fftSize);
       const freqData = new Float32Array(bufferLength);
-      
-      const energyHistory = [];
       const chroma = new Array(12).fill(0);
       
       const interval = setInterval(() => {
-        analyserRef.current.getFloatTimeDomainData(timeData);
-        let rms = 0;
-        for (let i = 0; i < timeData.length; i++) rms += timeData[i] * timeData[i];
-        energyHistory.push(Math.sqrt(rms / timeData.length));
-        
         analyserRef.current.getFloatFrequencyData(freqData);
         for (let i = 0; i < bufferLength; i++) {
           const freq = i * audioContext.current.sampleRate / analyserRef.current.fftSize;
-          if (freq > 50 && freq < 1000) {
+          if (freq > 60 && freq < 1000) {
             const noteIndex = Math.round(12 * Math.log2(freq / 440) + 69) % 12;
-            chroma[noteIndex] += Math.max(0, freqData[i] + 100);
+            chroma[noteIndex] += Math.pow(10, freqData[i] / 20);
           }
         }
-      }, 50);
+      }, 100);
 
       setTimeout(() => {
         clearInterval(interval);
         stream.getTracks().forEach(t => t.stop());
         
-        // --- Algoritmo mejorado de autocorrelación (Tempo) ---
-        // Rango de BPMs musicales (40 a 220) -> Lags (en muestras de 20ms)
-        // 60000ms / 220bpm = 272ms / 20ms = 13.6 lags
-        // 60000ms / 40bpm = 1500ms / 20ms = 75 lags
-        
-        let bestBpm = 120;
-        let maxCorr = 0;
-        const minLag = 14; 
-        const maxLag = 80; 
-
-        for (let lag = minLag; lag < maxLag; lag++) {
-          let corr = 0;
-          for (let i = 0; i < energyHistory.length - lag; i++) {
-            // Aplicamos un suavizado básico para evitar falsos positivos
-            corr += energyHistory[i] * energyHistory[i + lag];
-          }
-          if (corr > maxCorr) {
-            maxCorr = corr;
-            bestBpm = Math.round(60000 / (lag * 20));
-          }
-        }
-
-        // Key detection por Chroma Vector
-        const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
         const maxChroma = Math.max(...chroma);
         const rootIndex = chroma.indexOf(maxChroma);
         const isMinor = chroma[(rootIndex + 3) % 12] > chroma[(rootIndex + 4) % 12];
         
-        setBpm(Math.min(220, Math.max(40, bestBpm)));
+        const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
         setKey(`${notes[rootIndex]}${isMinor ? 'm' : ''}`);
         setIsAnalyzing(false);
-      }, 15000);
+      }, 10000);
     } catch (e) {
       console.error(e);
       alert("Error al acceder al micrófono.");
@@ -96,7 +96,6 @@ export default function TempoSense({ onBack }) {
 
   const handleTap = () => {
     const now = Date.now();
-    // Mejor sensibilidad móvil: filtramos toques fuera de rango (ej. 30 a 250 BPM)
     let newTapTimes = tapTimes.filter(t => now - t < 2000);
     newTapTimes.push(now);
     
@@ -119,9 +118,16 @@ export default function TempoSense({ onBack }) {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center gap-10">
-        <div className="text-8xl font-black tabular-nums tracking-tighter text-center">
-          {bpm}<span className="text-2xl text-slate-500 font-light ml-2">BPM</span>
-          {key && <div className="text-xl text-[#39FF14] mt-4 tracking-widest uppercase">Nota: {key}</div>}
+        <div className="text-center">
+            {mode === 'tap' ? (
+                <div className="text-8xl font-black tabular-nums tracking-tighter">
+                    {bpm}<span className="text-2xl text-slate-500 font-light ml-2">BPM</span>
+                </div>
+            ) : (
+                <div className="text-6xl font-black tracking-tighter text-[#39FF14]">
+                    {key || 'ESCUCHANDO'}
+                </div>
+            )}
         </div>
 
         <div className="flex gap-4 p-2 bg-white/5 rounded-full border border-white/10">
