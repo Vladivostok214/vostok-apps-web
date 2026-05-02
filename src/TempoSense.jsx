@@ -79,12 +79,35 @@ export default function TempoSense({ onBack }) {
         clearInterval(interval);
         stream.getTracks().forEach(t => t.stop());
         
-        const maxChroma = Math.max(...chroma);
-        const rootIndex = chroma.indexOf(maxChroma);
-        const isMinor = chroma[(rootIndex + 3) % 12] > chroma[(rootIndex + 4) % 12];
-        
+        // Plantillas de escalas (Major/Minor)
+        const scales = {
+          "Maj": [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
+          "Min": [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0]
+        };
         const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
-        setKey(`${notes[rootIndex]}${isMinor ? 'm' : ''}`);
+        
+        let bestKey = "";
+        let maxCorrelation = -1;
+
+        // Correlación de Pearson entre Chroma detectado y cada escala posible
+        for (let root = 0; root < 12; root++) {
+          for (let type in scales) {
+            let correlation = 0;
+            for (let i = 0; i < 12; i++) {
+              if (scales[type][i] === 1) {
+                correlation += chroma[(root + i) % 12];
+              } else {
+                correlation -= chroma[(root + i) % 12] * 0.5; // Penalización por notas fuera de escala
+              }
+            }
+            if (correlation > maxCorrelation) {
+              maxCorrelation = correlation;
+              bestKey = `${notes[root]}${type === 'Min' ? 'm' : ''}`;
+            }
+          }
+        }
+        
+        setKey(bestKey);
         setIsAnalyzing(false);
       }, 10000);
     } catch (e) {
