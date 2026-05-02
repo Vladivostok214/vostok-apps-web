@@ -336,6 +336,34 @@ function VostokTuner({ onBack }) {
     rafIdRef.current = requestAnimationFrame(updateLoop);
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+      const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer);
+      const floatData = audioBuffer.getChannelData(0);
+      
+      // Analizar una ventana de 2048 muestras del medio del archivo
+      const start = Math.floor(floatData.length / 2);
+      const windowData = floatData.slice(start, start + 2048);
+      const freq = autoCorrelate(windowData, 44100);
+
+      if (freq !== -1 && freq > 20 && freq < 2000) {
+        setRefPitch(Math.round(freq));
+        trackEvent('calibration_file_success', { freq });
+        alert(`Calibración Optimizada: Referencia ajustada a ${Math.round(freq)}Hz`);
+      } else {
+        alert("No se detectó un tono claro de calibración. Use un archivo con una nota constante.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error al procesar el archivo de audio.");
+    }
+  };
+
   const note = targetMidi ? { n: noteStrings[targetMidi % 12], o: Math.floor(targetMidi / 12) - 1 } : { n: "-", o: "" };
 
   return (
@@ -479,7 +507,7 @@ function VostokTuner({ onBack }) {
                     <Upload className="w-4 h-4" />
                     Cargar Calibración
                   </button>
-                  <input type="file" ref={fileInputRef} className="hidden" accept="audio/*" />
+                  <input type="file" ref={fileInputRef} className="hidden" accept="audio/*" onChange={handleFileUpload} />
                 </section>
               </div>
               <button onClick={() => setActivePanel('center')} className="mt-auto w-full py-5 bg-[#39FF14]/10 border border-[#39FF14]/20 rounded-3xl text-[10px] font-black text-[#39FF14] uppercase tracking-widest active:scale-95 transition-transform">Listo</button>
@@ -755,13 +783,13 @@ export default function App() {
               <p className="text-slate-700 text-[10px] font-black uppercase tracking-[0.4em] mt-2 font-bold">LABORATORIO DE ACÚSTICA APLICADA © 2026</p>
               
               <a 
-                href="https://www.reddit.com/r/Vostok_Labs" 
+                href="https://www.reddit.com/r/VostokLabs/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 px-6 py-3 bg-[#FF4500]/10 border border-[#FF4500]/20 rounded-full hover:bg-[#FF4500]/20 transition-all group shadow-lg active:scale-95"
               >
                 <RedditIcon className="w-5 h-5 text-[#FF4500]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white font-bold">r/Vostok_Labs</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white font-bold">r/VostokLabs</span>
               </a>
             </div>
             
