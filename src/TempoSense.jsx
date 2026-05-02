@@ -24,27 +24,41 @@ export default function TempoSense({ onBack }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContext.current.createAnalyser();
+      analyserRef.current.fftSize = 2048;
       const source = audioContext.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       
       const bufferLength = analyserRef.current.fftSize;
       const dataArray = new Float32Array(bufferLength);
-      let peaks = 0;
+      
+      // Colección de energía en el tiempo para detectar picos (onsets)
+      const energyHistory = [];
       const startTime = Date.now();
 
       const interval = setInterval(() => {
         analyserRef.current.getFloatTimeDomainData(dataArray);
-        // Detección simple de transitorios para BPM
-        let rms = 0;
-        for (let i = 0; i < bufferLength; i++) rms += dataArray[i] * dataArray[i];
-        if (Math.sqrt(rms / bufferLength) > 0.15) peaks++;
-      }, 50);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) sum += Math.abs(dataArray[i]);
+        energyHistory.push(sum / bufferLength);
+      }, 20); // Muestreo cada 20ms
 
       setTimeout(() => {
         clearInterval(interval);
         stream.getTracks().forEach(t => t.stop());
-        setBpm(Math.round(peaks * 2)); // Ajuste heurístico
-        setKey('A'); // Placeholder para análisis de nota dominante
+        
+        // Algoritmo simple de picos: buscar valores superiores al promedio * 1.5
+        const avgEnergy = energyHistory.reduce((a, b) => a + b) / energyHistory.length;
+        let peaks = 0;
+        for (let i = 1; i < energyHistory.length - 1; i++) {
+          if (energyHistory[i] > avgEnergy * 1.8 && energyHistory[i] > energyHistory[i-1] && energyHistory[i] > energyHistory[i+1]) {
+            peaks++;
+          }
+        }
+        
+        // BPM = (peaks / 15 segundos) * 60
+        const calculatedBpm = Math.round((peaks / 15) * 60);
+        setBpm(Math.min(220, Math.max(40, calculatedBpm)));
+        setKey('A'); // Placeholder para análisis de frecuencia dominante
         setIsAnalyzing(false);
       }, 15000);
 
