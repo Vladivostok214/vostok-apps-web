@@ -172,8 +172,19 @@ const useWakeLock = () => {
 
 const usePWAInstall = () => {
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    // Detectar si ya está instalada
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setIsInstalled(true);
+    }
+
+    // Detectar iOS
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+
     const handler = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -183,13 +194,20 @@ const usePWAInstall = () => {
   }, []);
 
   const installApp = async () => {
+    if (isIOS) {
+      alert('Para instalar: Pulsa el botón "Compartir" de Safari y elige "Añadir a la pantalla de inicio".');
+      return;
+    }
     if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') setInstallPrompt(null);
   };
 
-  return { canInstall: !!installPrompt, installApp };
+  // En móvil mostramos el botón si: No está instalada Y (Hay prompt de Android O es iOS)
+  const canShowMobile = !isInstalled && (!!installPrompt || isIOS);
+  
+  return { canInstall: !!installPrompt, canShowMobile, installApp, isInstalled };
 };
 
 // --- COMPONENTES DE IDENTIDAD ---
@@ -540,7 +558,7 @@ function SoundScienceSection() {
 export default function App() {
   const [view, setView] = useState('home');
   const [copied, setCopied] = useState(false);
-  const { canInstall, installApp } = usePWAInstall();
+  const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
 
   useEffect(() => {
     initAnalytics();
@@ -593,7 +611,7 @@ export default function App() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          {canInstall && (
+          {!isInstalled && (canInstall || canShowMobile) && (
             <button 
               onClick={handleInstall} 
               aria-label="Descargar aplicación"
@@ -615,10 +633,10 @@ export default function App() {
       {/* Hero Section */}
       <section className="min-h-screen flex flex-col items-center justify-center px-8 text-center relative pt-40 pb-20 z-10">
         <div className="max-w-4xl flex flex-col items-center">
-          {canInstall && (
+          {canShowMobile && (
             <button 
               onClick={handleInstall} 
-              className="sm:hidden mb-8 px-8 py-3 bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
+              className="sm:hidden mb-12 px-8 py-4 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-full text-[11px] font-black uppercase tracking-[0.4em] active:scale-95 transition-all shadow-[0_0_20px_rgba(57,255,20,0.1)]"
             >
               Instalar App Nativa
             </button>
