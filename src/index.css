@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+
+html, body {
+  overscroll-behavior-y: none;
+  background-color: #000;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.safe-pt { padding-top: max(1.5rem, var(--safe-top)); }
+.safe-pb { padding-bottom: max(1.5rem, var(--safe-bottom)); }
+.safe-mt { margin-top: var(--safe-top); }
+.safe-mb { margin-bottom: var(--safe-bottom); }
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
