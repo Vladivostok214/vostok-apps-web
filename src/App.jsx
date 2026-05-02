@@ -2,9 +2,88 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
   Smartphone, LayoutGrid, Plus, Minus, BellRing, ArrowLeft, 
-  Music, Headphones, Zap
+  Music, Headphones, Zap, Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase, initAnalytics, trackEvent } from './lib/analytics';
+
+// --- COMPONENTES DE BACKEND ---
+function ExperimentationBox() {
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState('idle'); // 'idle' | 'sending' | 'success' | 'error'
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!message.trim() || !supabase) return;
+
+    setStatus('sending');
+    const { error } = await supabase
+      .from('messages')
+      .insert([{ content: message, created_at: new Date() }]);
+
+    if (error) {
+      console.error(error);
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 3000);
+    } else {
+      trackEvent('message_sent', { length: message.length });
+      setStatus('success');
+      setMessage('');
+      setTimeout(() => setStatus('idle'), 5000);
+    }
+  };
+
+  if (!supabase) {
+    return (
+      <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]" style={{ WebkitBackdropFilter: 'blur(10px)' }}>
+        <div className="flex items-center gap-4 mb-6">
+          <BellRing className="w-6 h-6 text-[#39FF14]/70" />
+          <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90 font-bold">Buzón de Experimentación</h4>
+        </div>
+        <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10">Configura VITE_SUPABASE_URL y KEY para activar el buzón.</p>
+        <div className="h-14 flex items-center justify-center border border-white/5 rounded-full bg-white/[0.03]">
+          <span className="text-[9px] font-black text-slate-800 uppercase tracking-[0.4em] font-bold">CONEXIÓN REQUERIDA</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]" style={{ WebkitBackdropFilter: 'blur(10px)' }}>
+      <div className="flex items-center gap-4 mb-6">
+        <BellRing className={`w-6 h-6 ${status === 'success' ? 'text-[#39FF14]' : 'text-[#39FF14]/70'}`} />
+        <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90 font-bold">Buzón de Experimentación</h4>
+      </div>
+      
+      {status === 'success' ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-40 flex flex-col items-center justify-center text-center">
+          <Check className="w-10 h-10 text-[#39FF14] mb-4" />
+          <p className="text-sm font-bold text-slate-300">Observación recibida. Gracias por contribuir al laboratorio.</p>
+        </motion.div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <p className="text-slate-500 text-xs font-bold leading-relaxed mb-2 uppercase">"Envíenos sus observaciones acústicas. Nuestra comunidad construye el futuro del audio."</p>
+          <textarea 
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Escribe tu mensaje..."
+            className="w-full h-24 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-[#39FF14]/40 transition-colors resize-none"
+          />
+          <button 
+            type="submit"
+            disabled={status === 'sending' || !message.trim()}
+            className="h-14 flex items-center justify-center gap-3 border border-[#39FF14]/20 rounded-full bg-[#39FF14]/5 hover:bg-[#39FF14]/10 transition-all group disabled:opacity-50"
+          >
+            <span className="text-[9px] font-black text-[#39FF14] uppercase tracking-[0.4em] font-bold">
+              {status === 'sending' ? 'ENVIANDO...' : 'ENVIAR REPORTE'}
+            </span>
+            <Send className="w-4 h-4 text-[#39FF14] group-hover:translate-x-1 transition-transform" />
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
 
 // --- OPTIMIZACIÓN DE PROCESAMIENTO ---
 // Pre-asignamos memoria para evitar Garbage Collection en el loop de audio
@@ -243,8 +322,8 @@ function VostokTuner({ onBack }) {
 
   return (
     <div className="fixed inset-0 bg-[#050505] z-[100] flex flex-col items-center overflow-hidden font-sans text-white">
-      {/* Dynamic Background Glow */}
-      <div className={`absolute inset-0 opacity-20 blur-[120px] transition-colors duration-1000 will-change-[background-color] ${Math.abs(cents) < 5 && pitch ? 'bg-[#39FF14]' : 'bg-purple-600'}`} />
+      {/* Dynamic Background Glow - Boosted for Vostok Labs depth */}
+      <div className={`absolute inset-0 opacity-40 blur-[120px] transition-colors duration-1000 will-change-[background-color] ${Math.abs(cents) < 5 && pitch ? 'bg-[#39FF14]' : 'bg-purple-600'}`} />
 
       {!isListening && (
         <div className="absolute inset-0 z-[150] bg-black flex flex-col items-center justify-center p-8 text-center" onClick={startListening}>
@@ -330,7 +409,15 @@ function VostokTuner({ onBack }) {
                 {INSTRUMENTS.map(inst => {
                   const Icon = inst.icon;
                   return (
-                    <button key={inst.id} onClick={() => { setSelectedInstrument(inst.id); setActivePanel('center'); }} className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}>
+                    <button 
+                      key={inst.id} 
+                      onClick={() => { 
+                        trackEvent('instrument_select', { instrument: inst.id });
+                        setSelectedInstrument(inst.id); 
+                        setActivePanel('center'); 
+                      }} 
+                      className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
+                    >
                       <Icon className={`w-5 h-5 relative z-10 ${selectedInstrument === inst.id ? 'text-[#39FF14]' : ''}`} />
                       <span className="font-bold text-sm uppercase tracking-widest relative z-10">{inst.name}</span>
                       {selectedInstrument === inst.id && <Check className="w-4 h-4 ml-auto text-[#39FF14] relative z-10" />}
@@ -455,14 +542,29 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const { canInstall, installApp } = usePWAInstall();
 
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   const handleContact = useCallback(() => {
     const email = 'contacto@vostoklabs.audio';
+    trackEvent('contact_click');
     navigator.clipboard.writeText(email).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' });
     });
   }, []);
+
+  const handleSetView = (v) => {
+    trackEvent('view_change', { to: v });
+    setView(v);
+  };
+
+  const handleInstall = () => {
+    trackEvent('pwa_install_click');
+    installApp();
+  };
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden">
@@ -493,7 +595,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           {canInstall && (
             <button 
-              onClick={installApp} 
+              onClick={handleInstall} 
               aria-label="Descargar aplicación"
               className="hidden sm:flex px-6 py-2.5 bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF14]/20 active:scale-95 transition-all"
             >
@@ -515,7 +617,7 @@ export default function App() {
         <div className="max-w-4xl flex flex-col items-center">
           {canInstall && (
             <button 
-              onClick={installApp} 
+              onClick={handleInstall} 
               className="sm:hidden mb-8 px-8 py-3 bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
             >
               Instalar App Nativa
@@ -554,7 +656,7 @@ export default function App() {
               transition={{ delay: 0.3 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setView('tuner')} 
+              onClick={() => handleSetView('tuner')} 
               aria-label="Abrir Afinador Vostok"
               className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
               style={{ WebkitBackdropFilter: 'blur(20px)' }}
@@ -646,16 +748,7 @@ export default function App() {
             </div>
             
             <div className="relative">
-              <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]" style={{ WebkitBackdropFilter: 'blur(10px)' }}>
-                <div className="flex items-center gap-4 mb-6">
-                  <BellRing className="w-6 h-6 text-[#39FF14]/70" />
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90 font-bold">Buzón de Experimentación</h4>
-                </div>
-                <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10 font-bold">"Envíenos sus observaciones acústicas. Nuestra comunidad construye el futuro del audio."</p>
-                <div className="h-14 flex items-center justify-center border border-white/5 rounded-full bg-white/[0.03]">
-                  <span className="text-[9px] font-black text-slate-800 uppercase tracking-[0.4em] font-bold">INACTIVO EN FASE BETA</span>
-                </div>
-              </div>
+              <ExperimentationBox />
             </div>
           </div>
         </div>

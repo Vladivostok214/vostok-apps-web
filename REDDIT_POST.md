@@ -26,9 +26,15 @@ The application features a high-contrast, layered aesthetic with deep glows.
 The project moves beyond standard "Add to Home Screen" prompts.
 *   **Direct Installation:** A custom installation workflow was developed to offer a seamless standalone experience, including branded icons and full-screen display modes.
 
+### 5. Backend & Observability
+To manage the platform as a professional product:
+*   **Infrastructure:** Integrated **Supabase** for real-time user feedback and **PostHog** for product analytics.
+*   **Event Tracking:** Captures instrument popularity, PWA conversion rates, and audio engine stability metrics to drive data-informed improvements.
+
 ## Tech Stack
 *   React 19 + Vite
 *   Web Audio API
+*   Supabase & PostHog
 *   Framer Motion (GPU Accelerated)
 *   Tailwind CSS 4.0
 *   Screen Wake Lock & Haptic APIs
@@ -58,3 +64,10 @@ El objetivo principal era asegurar que la aplicación se desempeñara y se sinti
 La aplicación presenta una estética de capas con contrastes profundos y brillos.
 *   **Optimización:** Los filtros de desenfoque de CSS tradicionales fueron sustituidos por **Shaders de Gradiente Radial** optimizados.
 *   **Aceleración por Hardware:** Los componentes dinámicos utilizan `will-change: transform`, forzando el renderizado por GPU y minimizando los cálculos de diseño en el hilo principal.
+
+### 4. Implementación de PWA Personalizada
+*   **Instalación Directa:** Desarrollo de un flujo de instalación personalizado para ofrecer una experiencia independiente, incluyendo íconos de marca y modos de visualización a pantalla completa.
+
+### 5. Backend y Observabilidad
+*   **Infraestructura:** Integración de **Supabase** para feedback de usuarios en tiempo real y **PostHog** para analíticas de producto.
+*   **Seguimiento de Eventos:** Captura de métricas clave para guiar la evolución del producto basada en el comportamiento real del usuario.
