@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
   Smartphone, LayoutGrid, Plus, Minus, BellRing, ArrowLeft, 
-  Music, Headphones, Zap, Send
+  Music, Headphones, Zap, Send, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
@@ -746,6 +746,22 @@ export default function App() {
               Ecosistema
             </motion.button>
           </div>
+
+          {/* Indicador de Scroll para descubrir contenido */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5, duration: 1 }}
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"
+          >
+            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-600">Explorar</span>
+            <motion.div
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ChevronDown className="w-5 h-5 text-slate-700" />
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
