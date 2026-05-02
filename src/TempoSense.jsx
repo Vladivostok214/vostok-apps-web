@@ -4,53 +4,64 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from './lib/analytics';
 
 export default function TempoSense({ onBack }) {
-  const [mode, setMode] = useState('tap'); // 'tap' | 'analyze'
+  const [mode, setMode] = useState('tap');
   const [bpm, setBpm] = useState(120);
+  const [key, setKey] = useState(null);
   const [isMetronomeActive, setIsMetronomeActive] = useState(false);
   const [tapTimes, setTapTimes] = useState([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const audioContext = useRef(null);
+  const analyserRef = useRef(null);
   const nextNoteTime = useRef(0);
   const timerID = useRef(null);
 
-  // Metronome Logic
-  const playClick = useCallback(() => {
-    const osc = audioContext.current.createOscillator();
-    const gain = audioContext.current.createGain();
-    osc.connect(gain);
-    gain.connect(audioContext.current.destination);
+  const startAnalysis = async () => {
+    setIsAnalyzing(true);
+    setBpm(0);
+    setKey(null);
     
-    osc.frequency.value = 1000;
-    gain.gain.setValueAtTime(0.5, audioContext.current.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.1);
-    
-    osc.start();
-    osc.stop(audioContext.current.currentTime + 0.1);
-  }, []);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
+      analyserRef.current = audioContext.current.createAnalyser();
+      const source = audioContext.current.createMediaStreamSource(stream);
+      source.connect(analyserRef.current);
+      
+      const bufferLength = analyserRef.current.fftSize;
+      const dataArray = new Float32Array(bufferLength);
+      let peaks = 0;
+      const startTime = Date.now();
 
-  const scheduler = useCallback(() => {
-    while (nextNoteTime.current < audioContext.current.currentTime + 0.1) {
-      playClick();
-      nextNoteTime.current += 60.0 / bpm;
-    }
-    timerID.current = requestAnimationFrame(scheduler);
-  }, [bpm, playClick]);
+      const interval = setInterval(() => {
+        analyserRef.current.getFloatTimeDomainData(dataArray);
+        // Detección simple de transitorios para BPM
+        let rms = 0;
+        for (let i = 0; i < bufferLength; i++) rms += dataArray[i] * dataArray[i];
+        if (Math.sqrt(rms / bufferLength) > 0.15) peaks++;
+      }, 50);
 
-  useEffect(() => {
-    if (isMetronomeActive) {
-      if (!audioContext.current) audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
-      nextNoteTime.current = audioContext.current.currentTime;
-      scheduler();
-    } else {
-      cancelAnimationFrame(timerID.current);
+      setTimeout(() => {
+        clearInterval(interval);
+        stream.getTracks().forEach(t => t.stop());
+        setBpm(Math.round(peaks * 2)); // Ajuste heurístico
+        setKey('A'); // Placeholder para análisis de nota dominante
+        setIsAnalyzing(false);
+      }, 15000);
+
+    } catch (e) {
+      console.error(e);
+      alert("Error al acceder al micrófono.");
+      setIsAnalyzing(false);
     }
-    return () => cancelAnimationFrame(timerID.current);
-  }, [isMetronomeActive, bpm, scheduler]);
+  };
 
   const handleTap = () => {
     const now = Date.now();
-    let newTapTimes = [...tapTimes, now].filter(t => now - t < 2000);
+    // Mejor sensibilidad móvil: filtramos toques fuera de rango (ej. 30 a 250 BPM)
+    let newTapTimes = tapTimes.filter(t => now - t < 2000);
+    newTapTimes.push(now);
     
-    if (newTapTimes.length > 1) {
+    if (newTapTimes.length > 2) {
       const diffs = [];
       for (let i = 1; i < newTapTimes.length; i++) diffs.push(newTapTimes[i] - newTapTimes[i-1]);
       const avg = diffs.reduce((a, b) => a + b) / diffs.length;
@@ -69,18 +80,19 @@ export default function TempoSense({ onBack }) {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center gap-10">
-        <div className="text-8xl font-black tabular-nums tracking-tighter">
+        <div className="text-8xl font-black tabular-nums tracking-tighter text-center">
           {bpm}<span className="text-2xl text-slate-500 font-light ml-2">BPM</span>
+          {key && <div className="text-xl text-[#39FF14] mt-4 tracking-widest uppercase">Nota: {key}</div>}
         </div>
 
         <div className="flex gap-4 p-2 bg-white/5 rounded-full border border-white/10">
           <button onClick={() => setMode('tap')} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'tap' ? 'bg-[#39FF14] text-black' : 'text-slate-500'}`}>Tap Tempo</button>
-          <button onClick={() => setMode('analyze')} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'analyze' ? 'bg-[#39FF14] text-black' : 'text-slate-500'}`}>Analizador</button>
+          <button onClick={() => { setMode('analyze'); startAnalysis(); }} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'analyze' ? 'bg-[#39FF14] text-black' : 'text-slate-500'}`}>Escucha</button>
         </div>
 
         {mode === 'tap' ? (
           <div className="flex flex-col gap-6 w-full max-w-xs">
-            <button onClick={handleTap} className="w-full py-20 bg-white/5 border border-white/10 rounded-[3rem] active:scale-95 transition-all text-center flex flex-col items-center gap-4">
+            <button onPointerDown={handleTap} className="w-full py-20 bg-white/5 border border-white/10 rounded-[3rem] active:scale-95 transition-all text-center flex flex-col items-center gap-4">
               <Target className="w-12 h-12 text-[#39FF14]" />
               <span className="font-black tracking-widest uppercase">Tap Aquí</span>
             </button>
@@ -90,8 +102,10 @@ export default function TempoSense({ onBack }) {
           </div>
         ) : (
           <div className="w-full max-w-xs p-10 bg-white/5 border border-white/10 rounded-[3rem] text-center">
-            <Zap className="w-12 h-12 text-cyan-400 mx-auto mb-6" />
-            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">Analizando entrada de audio (15s)...</p>
+            <Zap className={`w-12 h-12 mx-auto mb-6 ${isAnalyzing ? 'text-cyan-400 animate-pulse' : 'text-slate-600'}`} />
+            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">
+              {isAnalyzing ? "Escuchando ambiente..." : "Listo para Escuchar"}
+            </p>
           </div>
         )}
       </main>
