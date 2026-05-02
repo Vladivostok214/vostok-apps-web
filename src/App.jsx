@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- CONSTANTES GLOBALES (Evitan errores de referencia) ---
+// --- CONSTANTES GLOBALES ---
 const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 const autoCorrelate = (buf, sampleRate) => {
@@ -43,10 +43,10 @@ const INSTRUMENTS = [
 ];
 
 const PROTAGONISTAS = [
-  { id: 'pitagoras', nombre: 'PITÁGORAS', titulo: 'El Monocordio', descripcion: 'Descubrió que la armonía es matemática pura. Dividiendo una cuerda en radios exactos, estableció las bases de la escala musical occidental.', grafico: 'triangle', color: '#00f5ff' },
-  { id: 'sauveur', nombre: 'JOSEPH SAUVEUR', titulo: 'Padre de la Acústica', descripcion: 'Fue el primero en calcular la frecuencia absoluta de un sonido y en identificar los nodos en cuerdas vibrantes.', grafico: 'nodes', color: '#00d1ff' },
-  { id: 'chladni', nombre: 'ERNST CHLADNI', titulo: 'El Visualizador', descripcion: 'Reveló la geometría del sonido mostrando patrones visuales simétricos llamados líneas nodales.', grafico: 'symmetry', color: '#00b8ff' },
-  { id: 'vostok', nombre: 'VOSTOK ENGINE', titulo: 'Super-Resolución IA', descripcion: 'Detección de tono mediante redes neuronales que filtran el ruido ambiente para una precisión quirúrgica.', grafico: 'ai', color: '#ffffff' }
+  { id: 'pitagoras', nombre: 'PITÁGORAS', titulo: 'El Monocordio', descripcion: 'Descubrió que la armonía es matemática pura. Dividiendo una cuerda en radios exactos (2:1, 3:2), estableció las bases de la escala musical que hoy rige el mundo occidental.', grafico: 'triangle', color: '#00f5ff' },
+  { id: 'sauveur', nombre: 'JOSEPH SAUVEUR', titulo: 'Padre de la Acústica', descripcion: 'A pesar de ser sordo, acuñó el término "Acústica". Fue el primero en calcular la frecuencia absoluta de un sonido y en identificar los nodos y vientres en cuerdas vibrantes.', grafico: 'nodes', color: '#00d1ff' },
+  { id: 'chladni', nombre: 'ERNST CHLADNI', titulo: 'El Visualizador', descripcion: 'Reveló la geometría del sonido. Sus figuras de arena sobre placas de metal mostraron que las ondas tenían patrones visuales simétricos llamados líneas nodales.', grafico: 'symmetry', color: '#00b8ff' },
+  { id: 'vostok', nombre: 'VOSTOK ENGINE', titulo: 'Super-Resolución IA', descripcion: 'Detección de tono mediante redes neuronales que filtran el ruido ambiente para una precisión quirúrgica en cualquier entorno.', grafico: 'ai', color: '#ffffff' }
 ];
 
 // --- COMPONENTES DE ICONOS ---
@@ -385,19 +385,18 @@ export default function App() {
         
         <div className="relative z-10 max-w-4xl flex flex-col items-center">
           <div className="inline-block px-5 py-2 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] text-[10px] font-black uppercase tracking-[0.5em] mb-10">
-            Digital Tools Laboratory
+            Analog Audio Laboratory
           </div>
           
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-[1.1] mb-10 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase select-none">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-black tracking-tighter leading-[1.1] mb-10 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase select-none">
             Redefiniendo el <br/> Audio Digital
           </h1>
           
           <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-14 leading-relaxed tracking-tight select-none">
-            Creamos herramientas de medición de audio precisas con interfaces táctiles que inspiran la <span className="font-bold text-white uppercase tracking-wider">creación musical</span>.
+            Creamos herramientas de precisión de grado de estudio con interfaces táctiles que inspiran la <span className="font-bold text-white uppercase tracking-wider">creación musical</span>.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-5 justify-center w-full sm:w-auto">
-            {/* BOTÓN REFINADO: VOSTOKTUNER */}
             <button 
               onClick={() => setView('tuner')} 
               className="px-8 py-3 bg-white text-black rounded-full border-[3px] border-purple-400 hover:bg-slate-100 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
@@ -432,9 +431,9 @@ export default function App() {
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { t: "Vostok Metronome", d: "Polirritmias y setlists inteligentes con sincronización estroboscópica.", s: "En Desarrollo", c: "#A855F7", i: Zap },
-              { t: "Vostok Spectrum", d: "Analizador de espectro 3D táctil para ingeniería de mezclas.", s: "Fase Alpha", c: "#3B82F6", i: Waves },
-              { t: "Vostok 4-Track", d: "Grabadora multipista minimalista inspirada en la era del cassette.", s: "Próximamente", c: "#F97316", i: Headphones }
+              { t: "Vostok Metronome", d: "POLIRRITMIAS Y SETLISTS INTELIGENTES. EL MOTOR DE TIEMPO DEFINITIVO.", s: "EN DESARROLLO", c: "#A855F7", i: Zap },
+              { t: "Vostok Spectrum", d: "ANALIZADOR DE ESPECTRO 3D. ENTIENDE EL SONIDO EN TODAS SUS DIMENSIONES.", s: "FASE ALPHA", c: "#3B82F6", i: Waves },
+              { t: "Vostok 4-Track", d: "GRABADORA MULTIPISTA MINIMALISTA INSPIRADA EN LA ERA ANALÓGICA.", s: "PRÓXIMAMENTE", c: "#F97316", i: Headphones }
             ].map((app, i) => {
               const Icon = app.i;
               return (
@@ -460,7 +459,7 @@ export default function App() {
                 <VostokLogo className="w-12 h-12" />
                 <span className="text-3xl font-black tracking-tighter text-white uppercase tracking-widest">Vostok Labs</span>
               </div>
-              <p className="text-slate-700 text-[10px] font-black uppercase tracking-[0.4em] mt-2 font-bold">Digital Tools Laboratory © 2026</p>
+              <p className="text-slate-700 text-[10px] font-black uppercase tracking-[0.4em] mt-2 font-bold">LABORATORIO DE ACÚSTICA APLICADA © 2026</p>
               
               {/* BOTÓN REDDIT */}
               <a 
@@ -482,7 +481,7 @@ export default function App() {
                 </div>
                 <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10 font-bold">"Envíenos sus observaciones acústicas. Nuestra comunidad construye el futuro del audio."</p>
                 <div className="h-14 flex items-center justify-center border border-white/5 rounded-full bg-white/[0.03]">
-                  <span className="text-[9px] font-black text-slate-800 uppercase tracking-[0.4em] font-bold">Fase Beta Activa</span>
+                  <span className="text-[9px] font-black text-slate-800 uppercase tracking-[0.4em] font-bold">INACTIVO EN FASE BETA</span>
                 </div>
               </div>
             </div>
