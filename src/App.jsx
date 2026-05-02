@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
   Smartphone, LayoutGrid, Plus, Minus, BellRing, ArrowLeft, 
-  Music, Headphones, Zap, Send, ChevronDown
+  Music, Headphones, Zap, Send, ChevronDown, Volume2
 } from 'lucide-react';
 import TempoSense from './TempoSense';
+import SpectrumAnalyzer from './SpectrumAnalyzer';
+import SPLMeter from './SPLMeter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
 
@@ -619,6 +621,8 @@ export default function App() {
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden grid-bg">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
       {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
+      {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}
+      {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
 
       {/* Guía de Instalación iOS Estilizada */}
       <AnimatePresence>
@@ -779,8 +783,9 @@ export default function App() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { t: "Tuner", d: "AFINACIÓN DE ALTA FIDELIDAD CON DETECCIÓN DE TONO AVANZADA.", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
-              { t: "TempoSense", d: "ANALIZADOR DE RITMO Y METRÓNOMO PROFESIONAL. TOCA PARA CALIBRAR.", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
-              { t: "4-Track", d: "GRABADORA MULTIPISTA MINIMALISTA INSPIRADA EN LA ERA ANALÓGICA.", s: "PRÓXIMAMENTE", c: "#F97316", i: Headphones, action: () => {} }
+              { t: "TempoSense", d: "ANALIZADOR DE RITMO Y METRÓNOMO PROFESIONAL.", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
+              { t: "Spectrum", d: "VISUALIZADOR DE ESPECTRO EN TIEMPO REAL. ANALIZA TUS FRECUENCIAS.", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
+              { t: "SPL Meter", d: "SONÓMETRO DE PRECISIÓN PARA MEDICIÓN DE PRESIÓN SONORA.", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') }
             ].map((app, i) => {
               const Icon = app.i;
               return (
