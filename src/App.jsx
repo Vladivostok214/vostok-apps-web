@@ -734,12 +734,12 @@ export default function App() {
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => document.getElementById('ecosistema')?.scrollIntoView({behavior: 'smooth'})} 
-              aria-label="Ver el Ecosistema de productos"
-              className="flex-1 sm:flex-none px-8 sm:px-10 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-[0.15em] backdrop-blur-md flex items-center justify-center shadow-lg"
+              onClick={() => document.getElementById('herramientas')?.scrollIntoView({behavior: 'smooth'})} 
+              aria-label="Ver más herramientas"
+              className="flex-1 sm:flex-none px-8 sm:px-10 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-widest backdrop-blur-md flex items-center justify-center shadow-lg"
               style={{ WebkitBackdropFilter: 'blur(20px)' }}
             >
-              Ecosistema
+              Más herramientas
             </motion.button>
           </div>
         </div>
@@ -765,10 +765,10 @@ export default function App() {
 
       <SoundScienceSection />
 
-      <section id="ecosistema" className="py-24 relative px-8 bg-black z-10">
+      <section id="herramientas" className="py-24 relative px-8 bg-black z-10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 flex flex-col items-center">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 text-white uppercase tracking-[0.1em]">El Ecosistema</h2>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 text-white uppercase tracking-[0.1em]">Más herramientas</h2>
             <div className="max-w-2xl">
               <p className="text-slate-400 text-xl font-medium leading-relaxed italic font-bold">"El afinador es solo el comienzo"</p>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mt-6 font-bold">— Vostok Lab</p>
