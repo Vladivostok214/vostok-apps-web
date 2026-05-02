@@ -73,7 +73,7 @@ const GraphicIcon = ({ type, color }) => {
     }
   };
   return (
-    <motion.div variants={floatVariants} animate="animate" className="w-full h-full flex items-center justify-center opacity-40">
+    <motion.div variants={floatVariants} animate="animate" className="w-full h-full flex items-center justify-center opacity-30">
       {type === 'triangle' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1"><path d="M50 15 L85 85 L15 85 Z" /></svg>}
       {type === 'nodes' && <svg viewBox="0 0 120 60" className="w-56 h-32" fill="none" stroke={color} strokeWidth="1"><path d="M10 30 Q 35 5, 60 30 T 110 30" /><path d="M10 30 Q 35 55, 60 30 T 110 30" strokeDasharray="4 4" /></svg>}
       {type === 'symmetry' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="0.8"><circle cx="50" cy="50" r="40" /><path d="M50 10 L50 90 M10 50 L90 50" strokeDasharray="2 2" /></svg>}
@@ -297,10 +297,16 @@ function SoundScienceSection() {
   const current = PROTAGONISTAS[index];
   return (
     <section className="py-24 px-6 md:p-12 bg-[#050505] flex flex-col items-center justify-center relative border-y border-white/5 overflow-hidden text-white">
-      <div className="absolute inset-0 pointer-events-none opacity-20">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-900 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900 rounded-full blur-[120px]" />
-      </div>
+      {/* Dynamic Background Glow for mobile/scrolling awareness */}
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.1, 1],
+          opacity: [0.1, 0.2, 0.1]
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none" 
+      />
+      
       <div className="mb-12 text-center z-10">
         <div className="flex items-center justify-center gap-3 mb-4">
           <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_10px_#06b6d4]" />
@@ -308,9 +314,28 @@ function SoundScienceSection() {
         </div>
         <h2 className="text-4xl md:text-5xl font-light text-white uppercase tracking-tighter leading-tight">La Genealogía del <br/><span className="font-black text-cyan-400">Sonido</span></h2>
       </div>
+
       <div className="relative w-full max-w-xl z-10" onClick={() => setIndex((prev) => (prev + 1) % PROTAGONISTAS.length)}>
-        <motion.div key={current.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="cursor-pointer group relative bg-neutral-900/40 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 transition-all hover:border-cyan-500/30 shadow-2xl overflow-hidden">
-          <div className="absolute -right-16 -top-16 w-64 h-64 pointer-events-none opacity-30 group-hover:opacity-50 transition-opacity">
+        <motion.div 
+          key={current.id} 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          whileTap={{ scale: 0.98 }}
+          className="cursor-pointer group relative bg-neutral-900/40 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 transition-all hover:border-cyan-500/30 shadow-2xl overflow-hidden active:bg-white/[0.02]"
+        >
+          {/* Subtle Mobile Pulse Indicator */}
+          <div className="absolute top-6 right-6 md:hidden">
+            <motion.div 
+              animate={{ opacity: [0.2, 0.6, 0.2] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-[8px] font-black text-cyan-500 uppercase tracking-widest"
+            >
+              Tocar
+            </motion.div>
+          </div>
+
+          <div className="absolute -right-16 -top-16 w-64 h-64 pointer-events-none opacity-20 md:opacity-30 group-hover:opacity-50 transition-opacity">
             <GraphicIcon type={current.grafico} color={current.color} />
           </div>
           <div className="relative flex flex-col min-h-[280px] justify-between z-10">
@@ -355,6 +380,20 @@ export default function App() {
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
 
+      {/* Optimized Background Glows for mobile rendering persistence */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1], opacity: [0.05, 0.1, 0.05] }}
+          transition={{ duration: 10, repeat: Infinity }}
+          className="absolute top-0 right-0 w-[80vw] h-[80vw] bg-purple-600/10 rounded-full blur-[150px]" 
+        />
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], opacity: [0.05, 0.1, 0.05] }}
+          transition={{ duration: 12, repeat: Infinity, delay: 2 }}
+          className="absolute bottom-0 left-0 w-[60vw] h-[60vw] bg-[#39FF14]/5 rounded-full blur-[120px]" 
+        />
+      </div>
+
       <nav className="fixed top-0 w-full z-40 px-8 py-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-3">
           <VostokLogo className="w-10 h-10" />
@@ -369,11 +408,8 @@ export default function App() {
       </nav>
 
       {/* Hero Section */}
-      <section className="min-h-[85vh] flex flex-col items-center justify-center px-8 text-center relative pt-20">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-[#39FF14]/5 rounded-full blur-[120px] pointer-events-none" />
-        
-        <div className="relative z-10 max-w-4xl flex flex-col items-center">
+      <section className="min-h-[85vh] flex flex-col items-center justify-center px-8 text-center relative pt-20 z-10">
+        <div className="max-w-4xl flex flex-col items-center">
           <div className="inline-block px-5 py-2 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[10px] font-black uppercase tracking-[0.5em] mb-10">
             Analog Audio Laboratory
           </div>
@@ -386,13 +422,13 @@ export default function App() {
             Creamos herramientas de precisión de grado de estudio con interfaces táctiles que inspiran la <strong className="font-bold text-white">creación musical</strong>.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-5 justify-center w-full sm:w-auto">
-            {/* BOTÓN REFINADO: Glassmorphism suave y tamaño balanceado */}
+          {/* Refined Button Row: Ensuring side-by-side on tablet/desktop and balanced stack on small mobile */}
+          <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto">
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setView('tuner')} 
-              className="px-8 py-2.5 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group"
+              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group"
             >
               <TuningForkIcon className="w-8 h-8 text-[#39FF14] group-hover:scale-110 transition-transform" />
               <div className="text-xl md:text-2xl leading-none uppercase tracking-tighter flex items-center">
@@ -403,7 +439,7 @@ export default function App() {
             
             <button 
               onClick={() => document.getElementById('ecosistema')?.scrollIntoView({behavior: 'smooth'})} 
-              className="px-8 py-2.5 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-[0.15em] backdrop-blur-md flex items-center shadow-lg"
+              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs sm:text-sm hover:bg-white/10 transition-all uppercase tracking-[0.15em] backdrop-blur-md flex items-center justify-center shadow-lg"
             >
               Ecosistema
             </button>
@@ -413,7 +449,7 @@ export default function App() {
 
       <SoundScienceSection />
 
-      <section id="ecosistema" className="py-24 relative px-8 bg-black">
+      <section id="ecosistema" className="py-24 relative px-8 bg-black z-10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 flex flex-col items-center">
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 text-white uppercase tracking-[0.1em]">El Ecosistema</h2>
@@ -447,7 +483,7 @@ export default function App() {
         </div>
       </section>
 
-      <footer id="contacto" className="py-24 px-8 bg-black border-t border-white/5">
+      <footer id="contacto" className="py-24 px-8 bg-black border-t border-white/5 z-10">
         <div className="max-w-7xl mx-auto flex flex-col items-center gap-16">
           <div className="grid md:grid-cols-2 gap-16 w-full">
             <div className="flex flex-col items-center md:items-start gap-8">
