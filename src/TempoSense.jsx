@@ -24,44 +24,60 @@ export default function TempoSense({ onBack }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContext.current.createAnalyser();
-      analyserRef.current.fftSize = 2048;
+      analyserRef.current.fftSize = 4096;
       const source = audioContext.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       
-      const bufferLength = analyserRef.current.fftSize;
-      const dataArray = new Float32Array(bufferLength);
+      const bufferLength = analyserRef.current.frequencyBinCount;
+      const timeData = new Float32Array(analyserRef.current.fftSize);
+      const freqData = new Float32Array(bufferLength);
       
-      // Colección de energía en el tiempo para detectar picos (onsets)
       const energyHistory = [];
-      const startTime = Date.now();
-
+      const chroma = new Array(12).fill(0);
+      
       const interval = setInterval(() => {
-        analyserRef.current.getFloatTimeDomainData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) sum += Math.abs(dataArray[i]);
-        energyHistory.push(sum / bufferLength);
-      }, 20); // Muestreo cada 20ms
+        analyserRef.current.getFloatTimeDomainData(timeData);
+        let rms = 0;
+        for (let i = 0; i < timeData.length; i++) rms += timeData[i] * timeData[i];
+        energyHistory.push(Math.sqrt(rms / timeData.length));
+        
+        analyserRef.current.getFloatFrequencyData(freqData);
+        for (let i = 0; i < bufferLength; i++) {
+          const freq = i * audioContext.current.sampleRate / analyserRef.current.fftSize;
+          if (freq > 50 && freq < 1000) {
+            const noteIndex = Math.round(12 * Math.log2(freq / 440) + 69) % 12;
+            chroma[noteIndex] += Math.max(0, freqData[i] + 100);
+          }
+        }
+      }, 50);
 
       setTimeout(() => {
         clearInterval(interval);
         stream.getTracks().forEach(t => t.stop());
         
-        // Algoritmo simple de picos: buscar valores superiores al promedio * 1.5
-        const avgEnergy = energyHistory.reduce((a, b) => a + b) / energyHistory.length;
-        let peaks = 0;
-        for (let i = 1; i < energyHistory.length - 1; i++) {
-          if (energyHistory[i] > avgEnergy * 1.8 && energyHistory[i] > energyHistory[i-1] && energyHistory[i] > energyHistory[i+1]) {
-            peaks++;
+        // BPM por autocorrelación de envolvente
+        let bestBpm = 120;
+        let maxCorr = 0;
+        for (let lag = 30; lag < 120; lag++) {
+          let corr = 0;
+          for (let i = 0; i < energyHistory.length - lag; i++) {
+            corr += energyHistory[i] * energyHistory[i + lag];
           }
+          if (corr > maxCorr) { maxCorr = corr; bestBpm = Math.round(60000 / (lag * 50)); }
         }
+
+        // Key detection por Chroma Vector
+        const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+        const maxChroma = Math.max(...chroma);
+        const rootIndex = chroma.indexOf(maxChroma);
         
-        // BPM = (peaks / 15 segundos) * 60
-        const calculatedBpm = Math.round((peaks / 15) * 60);
-        setBpm(Math.min(220, Math.max(40, calculatedBpm)));
-        setKey('A'); // Placeholder para análisis de frecuencia dominante
+        // Simple heuristic: Major if root + 4 is strong, Minor if root + 3 is strong
+        const isMinor = chroma[(rootIndex + 3) % 12] > chroma[(rootIndex + 4) % 12];
+        
+        setBpm(Math.min(220, Math.max(40, bestBpm)));
+        setKey(`${notes[rootIndex]}${isMinor ? 'm' : ''}`);
         setIsAnalyzing(false);
       }, 15000);
-
     } catch (e) {
       console.error(e);
       alert("Error al acceder al micrófono.");
