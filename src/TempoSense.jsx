@@ -55,23 +55,32 @@ export default function TempoSense({ onBack }) {
         clearInterval(interval);
         stream.getTracks().forEach(t => t.stop());
         
-        // BPM por autocorrelación de envolvente
+        // --- Algoritmo mejorado de autocorrelación (Tempo) ---
+        // Rango de BPMs musicales (40 a 220) -> Lags (en muestras de 20ms)
+        // 60000ms / 220bpm = 272ms / 20ms = 13.6 lags
+        // 60000ms / 40bpm = 1500ms / 20ms = 75 lags
+        
         let bestBpm = 120;
         let maxCorr = 0;
-        for (let lag = 30; lag < 120; lag++) {
+        const minLag = 14; 
+        const maxLag = 80; 
+
+        for (let lag = minLag; lag < maxLag; lag++) {
           let corr = 0;
           for (let i = 0; i < energyHistory.length - lag; i++) {
+            // Aplicamos un suavizado básico para evitar falsos positivos
             corr += energyHistory[i] * energyHistory[i + lag];
           }
-          if (corr > maxCorr) { maxCorr = corr; bestBpm = Math.round(60000 / (lag * 50)); }
+          if (corr > maxCorr) {
+            maxCorr = corr;
+            bestBpm = Math.round(60000 / (lag * 20));
+          }
         }
 
         // Key detection por Chroma Vector
         const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
         const maxChroma = Math.max(...chroma);
         const rootIndex = chroma.indexOf(maxChroma);
-        
-        // Simple heuristic: Major if root + 4 is strong, Minor if root + 3 is strong
         const isMinor = chroma[(rootIndex + 3) % 12] > chroma[(rootIndex + 4) % 12];
         
         setBpm(Math.min(220, Math.max(40, bestBpm)));
