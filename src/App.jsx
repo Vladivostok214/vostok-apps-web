@@ -195,17 +195,21 @@ const usePWAInstall = () => {
 
   const installApp = async () => {
     if (isIOS) {
-      alert('Para instalar: Pulsa el botón "Compartir" de Safari y elige "Añadir a la pantalla de inicio".');
+      alert('Para instalar Vostok Tuner: Pulsa el botón "Compartir" de Safari (el cuadrado con flecha) y elige "Añadir a la pantalla de inicio".');
       return;
     }
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      alert('Para instalar: Usa el menú de tu navegador y selecciona "Instalar aplicación" o "Añadir a pantalla de inicio".');
+      return;
+    }
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') setInstallPrompt(null);
   };
 
-  // En móvil mostramos el botón si: No está instalada Y (Hay prompt de Android O es iOS)
-  const canShowMobile = !isInstalled && (!!installPrompt || isIOS);
+  // Forzamos visibilidad en móvil si no está instalada, para que siempre haya un camino a la descarga
+  const isMobileBrowser = /iphone|ipad|ipod|android/.test(window.navigator.userAgent.toLowerCase());
+  const canShowMobile = !isInstalled && isMobileBrowser;
   
   return { canInstall: !!installPrompt, canShowMobile, installApp, isInstalled };
 };
@@ -375,7 +379,7 @@ function VostokTuner({ onBack }) {
         <div className="absolute inset-0 z-[150] bg-black flex flex-col items-center justify-center p-8 text-center" onClick={startListening}>
           <VostokLogo className="w-20 h-20 mb-10 animate-pulse" />
           <h2 className="text-4xl font-black mb-4 tracking-tighter text-white uppercase">Vostok Tuner</h2>
-          <p className="text-slate-500 text-[10px] tracking-[0.2em] mb-12 uppercase">Toque para iniciar calibración analógica/digital</p>
+          <p className="text-slate-500 text-[10px] tracking-[0.2em] mb-12 uppercase">Toque para iniciar la afinación de alta fidelidad</p>
           <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="py-3 px-10 border border-white/10 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Regresar</button>
         </div>
       )}
