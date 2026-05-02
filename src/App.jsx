@@ -73,7 +73,7 @@ const GraphicIcon = ({ type, color }) => {
     }
   };
   return (
-    <motion.div variants={floatVariants} animate="animate" className="w-full h-full flex items-center justify-center opacity-30">
+    <motion.div variants={floatVariants} animate="animate" className="w-full h-full flex items-center justify-center opacity-30 pointer-events-none">
       {type === 'triangle' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1"><path d="M50 15 L85 85 L15 85 Z" /></svg>}
       {type === 'nodes' && <svg viewBox="0 0 120 60" className="w-56 h-32" fill="none" stroke={color} strokeWidth="1"><path d="M10 30 Q 35 5, 60 30 T 110 30" /><path d="M10 30 Q 35 55, 60 30 T 110 30" strokeDasharray="4 4" /></svg>}
       {type === 'symmetry' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="0.8"><circle cx="50" cy="50" r="40" /><path d="M50 10 L50 90 M10 50 L90 50" strokeDasharray="2 2" /></svg>}
@@ -179,10 +179,10 @@ function VostokTuner({ onBack }) {
 
       <header className="w-full pt-14 px-8 flex justify-between items-start z-20">
         <div className="flex flex-col gap-3">
-          <button onClick={() => setActivePanel('left')} className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md">
+          <button onClick={() => setActivePanel('left')} className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
             <LayoutGrid className="w-5 h-5 text-slate-400" />
           </button>
-          <button onClick={onBack} className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md">
+          <button onClick={onBack} className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
             <ArrowLeft className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -193,7 +193,7 @@ function VostokTuner({ onBack }) {
           </div>
           <div className="text-[8px] font-black text-slate-600 mt-2 tracking-[0.3em] uppercase">Ref: {refPitch}Hz</div>
         </div>
-        <button onClick={() => setActivePanel('right')} className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md">
+        <button onClick={() => setActivePanel('right')} className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
           <Settings className="w-5 h-5 text-slate-400" />
         </button>
       </header>
@@ -223,7 +223,7 @@ function VostokTuner({ onBack }) {
         {activePanel === 'left' && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[180]" onClick={() => setActivePanel('center')} />
-            <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 left-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white">
+            <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 left-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white" style={{ WebkitBackdropFilter: 'blur(30px)' }}>
               <div className="flex justify-between items-center mb-10">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Módulo</span>
@@ -250,7 +250,7 @@ function VostokTuner({ onBack }) {
         {activePanel === 'right' && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[180]" onClick={() => setActivePanel('center')} />
-            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 right-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white">
+            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 right-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white" style={{ WebkitBackdropFilter: 'blur(30px)' }}>
               <div className="flex justify-between items-center mb-10">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Calibración</span>
@@ -262,9 +262,9 @@ function VostokTuner({ onBack }) {
                 <section>
                   <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3">Referencia A4</label>
                   <div className="flex items-center justify-between p-2 bg-white/5 rounded-full border border-white/10">
-                    <button onClick={() => setRefPitch(p => p - 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center transition-transform active:scale-90"><Minus className="w-4 h-4" /></button>
+                    <button onClick={() => setRefPitch(p => p - 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Minus className="w-4 h-4" /></button>
                     <span className="text-2xl font-black text-white tabular-nums tracking-tighter">{refPitch}<span className="text-xs text-slate-500 ml-1 font-normal">Hz</span></span>
-                    <button onClick={() => setRefPitch(p => p + 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center transition-transform active:scale-90"><Plus className="w-4 h-4" /></button>
+                    <button onClick={() => setRefPitch(p => p + 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Plus className="w-4 h-4" /></button>
                   </div>
                 </section>
                 <section>
@@ -297,14 +297,12 @@ function SoundScienceSection() {
   const current = PROTAGONISTAS[index];
   return (
     <section className="py-24 px-6 md:p-12 bg-[#050505] flex flex-col items-center justify-center relative border-y border-white/5 overflow-hidden text-white">
-      {/* Dynamic Background Glow for mobile/scrolling awareness */}
+      {/* Glow dinámico con aceleración por hardware */}
       <motion.div 
-        animate={{ 
-          scale: [1, 1.1, 1],
-          opacity: [0.1, 0.2, 0.1]
-        }}
+        animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none" 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none will-change-transform"
+        style={{ transform: 'translateZ(0)' }}
       />
       
       <div className="mb-12 text-center z-10">
@@ -323,15 +321,16 @@ function SoundScienceSection() {
           viewport={{ once: true }}
           whileTap={{ scale: 0.98 }}
           className="cursor-pointer group relative bg-neutral-900/40 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 transition-all hover:border-cyan-500/30 shadow-2xl overflow-hidden active:bg-white/[0.02]"
+          style={{ WebkitBackdropFilter: 'blur(20px)', transform: 'translateZ(0)' }}
         >
-          {/* Subtle Mobile Pulse Indicator */}
+          {/* Indicador Mobile persistente pero sobrio */}
           <div className="absolute top-6 right-6 md:hidden">
             <motion.div 
-              animate={{ opacity: [0.2, 0.6, 0.2] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              animate={{ opacity: [0.3, 0.7, 0.3] }}
+              transition={{ duration: 3, repeat: Infinity }}
               className="text-[8px] font-black text-cyan-500 uppercase tracking-widest"
             >
-              Tocar
+              Interactivo
             </motion.div>
           </div>
 
@@ -380,21 +379,23 @@ export default function App() {
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
 
-      {/* Optimized Background Glows for mobile rendering persistence */}
-      <div className="fixed inset-0 pointer-events-none z-0">
+      {/* Glows de fondo optimizados para persistencia en móviles */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.05, 0.1, 0.05] }}
-          transition={{ duration: 10, repeat: Infinity }}
-          className="absolute top-0 right-0 w-[80vw] h-[80vw] bg-purple-600/10 rounded-full blur-[150px]" 
+          animate={{ scale: [1, 1.2, 1], opacity: [0.08, 0.15, 0.08] }}
+          transition={{ duration: 15, repeat: Infinity }}
+          className="absolute top-[-10%] right-[-10%] w-[100vw] h-[100vw] bg-purple-600/10 rounded-full blur-[150px] will-change-transform" 
+          style={{ transform: 'translateZ(0)' }}
         />
         <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.05, 0.1, 0.05] }}
-          transition={{ duration: 12, repeat: Infinity, delay: 2 }}
-          className="absolute bottom-0 left-0 w-[60vw] h-[60vw] bg-[#39FF14]/5 rounded-full blur-[120px]" 
+          animate={{ scale: [1, 1.1, 1], opacity: [0.08, 0.12, 0.08] }}
+          transition={{ duration: 18, repeat: Infinity, delay: 2 }}
+          className="absolute bottom-[-10%] left-[-10%] w-[80vw] h-[80vw] bg-[#39FF14]/5 rounded-full blur-[120px] will-change-transform" 
+          style={{ transform: 'translateZ(0)' }}
         />
       </div>
 
-      <nav className="fixed top-0 w-full z-40 px-8 py-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5">
+      <nav className="fixed top-0 w-full z-40 px-8 py-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5" style={{ WebkitBackdropFilter: 'blur(16px)' }}>
         <div className="flex items-center gap-3">
           <VostokLogo className="w-10 h-10" />
           <span className="text-xl tracking-tight uppercase tracking-widest flex items-center">
@@ -419,19 +420,20 @@ export default function App() {
           </h1>
           
           <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-16 leading-relaxed tracking-tight select-none">
-            Creamos herramientas de precisión de grado de estudio con interfaces táctiles que inspiran la <strong className="font-bold text-white">creación musical</strong>.
+            Creamos herramientas de precisión de grado de estudio con interfaces táctiles que inspiran la <span className="font-bold text-white">creación musical</span>.
           </p>
           
-          {/* Refined Button Row: Ensuring side-by-side on tablet/desktop and balanced stack on small mobile */}
+          {/* Botones optimizados para mobile: Relación de tamaño armonizada */}
           <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto">
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setView('tuner')} 
-              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group"
+              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
+              style={{ WebkitBackdropFilter: 'blur(20px)', transform: 'translateZ(0)' }}
             >
-              <TuningForkIcon className="w-8 h-8 text-[#39FF14] group-hover:scale-110 transition-transform" />
-              <div className="text-xl md:text-2xl leading-none uppercase tracking-tighter flex items-center">
+              <TuningForkIcon className="w-6 h-6 sm:w-8 sm:h-8 text-[#39FF14] group-hover:scale-110 transition-transform" />
+              <div className="text-lg sm:text-2xl leading-none uppercase tracking-tighter flex items-center">
                 <span className="font-black">Vostok</span>
                 <span className="font-light opacity-70 ml-1">Tuner</span>
               </div>
@@ -439,7 +441,8 @@ export default function App() {
             
             <button 
               onClick={() => document.getElementById('ecosistema')?.scrollIntoView({behavior: 'smooth'})} 
-              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs sm:text-sm hover:bg-white/10 transition-all uppercase tracking-[0.15em] backdrop-blur-md flex items-center justify-center shadow-lg"
+              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-white/10 text-white rounded-full font-black text-[10px] sm:text-sm hover:bg-white/10 transition-all uppercase tracking-[0.15em] backdrop-blur-md flex items-center justify-center shadow-lg"
+              style={{ WebkitBackdropFilter: 'blur(20px)', transform: 'translateZ(0)' }}
             >
               Ecosistema
             </button>
@@ -500,7 +503,7 @@ export default function App() {
                 href="https://www.reddit.com/r/Vostok_Labs" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 px-6 py-3 bg-[#FF4500]/10 border border-[#FF4500]/20 rounded-full hover:bg-[#FF4500]/20 transition-all group shadow-lg"
+                className="flex items-center gap-3 px-6 py-3 bg-[#FF4500]/10 border border-[#FF4500]/20 rounded-full hover:bg-[#FF4500]/20 transition-all group shadow-lg active:scale-95 transition-transform"
               >
                 <RedditIcon className="w-5 h-5 text-[#FF4500]" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white font-bold">r/Vostok_Labs</span>
@@ -508,7 +511,7 @@ export default function App() {
             </div>
             
             <div className="relative">
-              <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]">
+              <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]" style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                 <div className="flex items-center gap-4 mb-6">
                   <BellRing className="w-6 h-6 text-[#39FF14]/70" />
                   <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90 font-bold">Buzón de Experimentación</h4>
