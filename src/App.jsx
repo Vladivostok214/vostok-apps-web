@@ -1,7 +1,11 @@
-import React from 'react';
-import { Smartphone, Activity, Zap, Waves, Headphones, ArrowRight, Mail, SlidersHorizontal, Globe, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Activity, Check, Settings, ExternalLink, SlidersHorizontal, 
+  Upload, Waves, X, ChevronRight, MessageSquare, Globe, 
+  Cpu, Zap, Shield, Play
+} from 'lucide-react';
 
-// Icono SVG personalizado para el Diapasón
+// --- COMPONENTE: ICONO DIAPASÓN ---
 const TuningForkIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M12 22v-8"></path>
@@ -11,254 +15,306 @@ const TuningForkIcon = ({ className }) => (
   </svg>
 );
 
-export default function App() {
+// --- CONSTANTES DE AFINACIÓN ---
+const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const INSTRUMENTS = {
+  chromatic: { id: 'chromatic', name: 'Cromático', strings: [] },
+  guitar: { id: 'guitar', name: 'Guitarra', strings: [
+    { note: 'E2', midi: 40 }, { note: 'A2', midi: 45 }, { note: 'D3', midi: 50 }, 
+    { note: 'G3', midi: 55 }, { note: 'B3', midi: 59 }, { note: 'E4', midi: 64 }
+  ]},
+  bass: { id: 'bass', name: 'Bajo', strings: [
+    { note: 'E1', midi: 28 }, { note: 'A1', midi: 33 }, { note: 'D2', midi: 38 }, { note: 'G2', midi: 43 }
+  ]},
+  ukulele: { id: 'ukulele', name: 'Ukelele', strings: [
+    { note: 'G4', midi: 67 }, { note: 'C4', midi: 60 }, { note: 'E4', midi: 64 }, { note: 'A4', midi: 69 }
+  ]}
+};
+
+// --- ALGORITMO AUTO-CORRELATE ---
+const autoCorrelate = (buf, sampleRate) => {
+  let SIZE = buf.length;
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) { rms += buf[i] * buf[i]; }
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.01) return -1;
+  let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+  for (let i = 0; i < SIZE / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
+  for (let i = 1; i < SIZE / 2; i++) { if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; } }
+  buf = buf.slice(r1, r2);
+  SIZE = buf.length;
+  const c = new Array(SIZE).fill(0);
+  for (let i = 0; i < SIZE; i++) {
+    for (let j = 0; j < SIZE - i; j++) { c[i] = c[i] + buf[j] * buf[j + i]; }
+  }
+  let d = 0; while (c[d] > c[d + 1]) d++;
+  let maxval = -1, maxpos = -1;
+  for (let i = d; i < SIZE; i++) { if (c[i] > maxval) { maxval = c[i]; maxpos = i; } }
+  let T0 = maxpos;
+  const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+  const a = (x1 + x3 - 2 * x2) / 2;
+  const b = (x3 - x1) / 2;
+  if (a) T0 = T0 - b / (2 * a);
+  return sampleRate / T0;
+};
+
+// --- COMPONENTE: VOSTOK TUNER APP ---
+function VostokTuner({ onBack }) {
+  const [isListening, setIsListening] = useState(false);
+  const [pitch, setPitch] = useState(null);
+  const [targetMidi, setTargetMidi] = useState(null);
+  const [cents, setCents] = useState(0);
+  const [selectedInstrument, setSelectedInstrument] = useState('chromatic');
+  const [activePanel, setActivePanel] = useState('center');
+  
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const mediaStreamSourceRef = useRef(null);
+  const rafIdRef = useRef(null);
+  const tapeRef = useRef(null);
+  const touchStartRef = useRef(null);
+
+  const currentStatus = isListening && pitch !== null 
+    ? (Math.abs(cents) <= 4 ? 'tuned' : Math.abs(cents) <= 15 ? 'close' : 'far') 
+    : 'idle';
+
+  // Gestos para móvil
+  const handleTouchStart = (e) => { touchStartRef.current = e.targetTouches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (!touchStartRef.current) return;
+    const diff = touchStartRef.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 80) {
+      if (diff > 0) activePanel === 'center' ? setActivePanel('right') : setActivePanel('center');
+      else activePanel === 'center' ? setActivePanel('left') : setActivePanel('center');
+    }
+    touchStartRef.current = null;
+  };
+
+  const startListening = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 2048;
+      mediaStreamSourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
+      mediaStreamSourceRef.current.connect(analyserRef.current);
+      setIsListening(true);
+      updateLoop();
+    } catch (e) { alert("Micrófono requerido."); }
+  };
+
+  const stopListening = () => {
+    cancelAnimationFrame(rafIdRef.current);
+    if (mediaStreamSourceRef.current) mediaStreamSourceRef.current.mediaStream.getTracks().forEach(t => t.stop());
+    if (audioContextRef.current) audioContextRef.current.close();
+    setIsListening(false);
+    setPitch(null);
+  };
+
+  const updateLoop = () => {
+    const buffer = new Float32Array(analyserRef.current.fftSize);
+    analyserRef.current.getFloatTimeDomainData(buffer);
+    const freq = autoCorrelate(buffer, audioContextRef.current.sampleRate);
+    if (freq !== -1) {
+      const midi = 12 * (Math.log(freq / 440) / Math.log(2)) + 69;
+      let target = Math.round(midi);
+      if (selectedInstrument !== 'chromatic') {
+        const strings = INSTRUMENTS[selectedInstrument].strings;
+        target = strings.reduce((prev, curr) => Math.abs(curr.midi - midi) < Math.abs(prev.midi - midi) ? curr : prev).midi;
+      }
+      setCents((midi - target) * 100);
+      setPitch(freq);
+      setTargetMidi(target);
+      if (tapeRef.current) tapeRef.current.style.transform = `translateX(-${(midi - 20) * 80 + 40}px)`;
+    }
+    rafIdRef.current = requestAnimationFrame(updateLoop);
+  };
+
+  const note = targetMidi ? { n: noteStrings[targetMidi % 12], o: Math.floor(targetMidi / 12) - 1 } : { n: "-", o: "" };
+
   return (
-    <div className="min-h-screen bg-[#0B0F19] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0B0F19] to-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="fixed inset-0 bg-[#0B0F19] z-50 flex flex-col items-center touch-none overflow-hidden" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div className={`absolute inset-0 transition-opacity duration-1000 opacity-20 blur-[100px] ${currentStatus === 'tuned' ? 'bg-emerald-500' : 'bg-blue-600'}`} />
       
-      {/* Navegación */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0B0F19]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-              <Waves className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-wide">Vostok<span className="font-light opacity-70">Apps</span></span>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#tuner" className="hover:text-white transition-colors">Vostok Tuner</a>
-            <a href="#ecosistema" className="hover:text-white transition-colors">Ecosistema</a>
-            <a href="#nosotros" className="hover:text-white transition-colors">Nosotros</a>
-          </div>
-          
-          <button className="px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium hover:bg-white/10 transition-all text-white backdrop-blur-md">
-            Contacto
-          </button>
+      {!isListening && (
+        <div className="absolute inset-0 z-[100] bg-[#0B0F19] flex flex-col items-center justify-center p-8 text-center" onClick={startListening}>
+          <div className="w-24 h-24 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mb-8 animate-bounce"><TuningForkIcon className="w-12 h-12 text-blue-400" /></div>
+          <h2 className="text-4xl font-black mb-4">Vostok Tuner</h2>
+          <p className="text-slate-400 animate-pulse">Toca para iniciar calibración</p>
+          <button onClick={(e) => {e.stopPropagation(); onBack();}} className="mt-12 text-slate-600 font-bold uppercase tracking-widest text-xs py-2 px-4 border border-white/5 rounded-full">Volver a Web</button>
         </div>
-      </nav>
+      )}
 
-      {/* Hero Section */}
-      <section className="relative pt-40 pb-20 lg:pt-48 lg:pb-32 px-6 flex flex-col items-center text-center">
-        {/* Glow de fondo */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
-
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-widest mb-8">
-          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-          Nuevo Lanzamiento
+      <header className="w-full pt-14 px-6 flex justify-between items-center z-20">
+        <button onClick={() => setActivePanel('left')} className="p-3 bg-white/5 rounded-full"><TuningForkIcon className="w-6 h-6 text-slate-400" /></button>
+        <div className="text-center">
+          <div className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1">Precisión Extrema</div>
+          <div className="text-sm font-mono text-slate-500">{pitch ? pitch.toFixed(1) : "000.0"} Hz</div>
         </div>
-        
-        <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 max-w-4xl leading-tight">
-          Redefiniendo el <br className="hidden md:block"/>
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400">Audio Digital Móvil</span>
-        </h1>
-        
-        <p className="text-lg md:text-xl text-slate-400 max-w-2xl mb-12 font-medium">
-          Creamos herramientas de precisión de grado de estudio con interfaces que inspiran. Nuestra misión es potenciar tu creatividad musical desde la palma de tu mano.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4">
-          <a href="#tuner" className="px-8 py-4 rounded-full bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)] hover:shadow-[0_0_50px_rgba(37,99,235,0.5)] flex items-center justify-center gap-2">
-            Descubrir Vostok Tuner
-            <ArrowRight className="w-5 h-5" />
-          </a>
-          <button className="px-8 py-4 rounded-full bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-2">
-            Ver Ecosistema
-          </button>
+        <button onClick={() => setActivePanel('right')} className="p-3 bg-white/5 rounded-full"><Settings className="w-6 h-6 text-slate-400" /></button>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center z-10 w-full px-6">
+        <div className="text-[12rem] font-black leading-none tracking-tighter flex items-start select-none">
+          {note.n}<span className="text-4xl opacity-30 mt-6 ml-2">{note.o}</span>
         </div>
-      </section>
-
-      {/* Featured App: Vostok Tuner */}
-      <section id="tuner" className="py-24 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="bg-[#131B2C]/40 backdrop-blur-2xl border border-white/5 rounded-[3rem] p-8 lg:p-16 flex flex-col lg:flex-row items-center gap-16 relative overflow-hidden">
-            
-            {/* Background Glow for Tuner */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-
-            <div className="lg:w-1/2 z-10">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center mb-8 border border-white/10 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                <TuningForkIcon className="w-8 h-8 text-emerald-400" />
-              </div>
-              <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-6">
-                Vostok Tuner
-              </h2>
-              <p className="text-slate-400 text-lg mb-8 leading-relaxed">
-                Nuestra primera obra maestra. Un afinador cromático y de instrumentos que combina un motor de detección <strong className="text-emerald-400">AutoCorrelate</strong> de alta precisión (± 4 Cents) con un diseño UI vanguardista en cristal oscuro.
-              </p>
-              
-              <div className="grid sm:grid-cols-2 gap-6 mb-10">
-                <div className="flex flex-col gap-2">
-                  <Activity className="w-6 h-6 text-blue-400" />
-                  <h3 className="font-semibold text-white">Onda Sinusoidal Reactiva</h3>
-                  <p className="text-sm text-slate-500">Visualización en tiempo real a 60FPS en el lienzo de fondo.</p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Smartphone className="w-6 h-6 text-purple-400" />
-                  <h3 className="font-semibold text-white">Navegación Nativa</h3>
-                  <p className="text-sm text-slate-500">Controles basados en gestos fluidos (Swipes) y feedback háptico.</p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Zap className="w-6 h-6 text-emerald-400" />
-                  <h3 className="font-semibold text-white">Precisión Extrema</h3>
-                  <p className="text-sm text-slate-500">Bloqueo de afinación inteligente con cinta deslizante inferior.</p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <TuningForkIcon className="w-6 h-6 text-amber-400" />
-                  <h3 className="font-semibold text-white">Multi-Instrumento</h3>
-                  <p className="text-sm text-slate-500">Perfiles para Guitarra, Bajo, Ukelele, Violín y modo Cromático.</p>
-                </div>
-              </div>
-              
-              <button className="px-8 py-3.5 rounded-2xl bg-white text-black font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
-                Próximamente en App Store
-              </button>
-            </div>
-
-            {/* Mockup CSS del Afinador */}
-            <div className="lg:w-1/2 flex justify-center z-10">
-              <div className="relative w-[300px] h-[600px] bg-[#0B0F19] rounded-[3rem] border-[8px] border-slate-800 shadow-2xl shadow-blue-500/20 overflow-hidden flex flex-col items-center pt-16 pb-8">
-                {/* Notch */}
-                <div className="absolute top-0 w-32 h-6 bg-slate-800 rounded-b-2xl"></div>
-                
-                {/* Simulated UI */}
-                <div className="w-full px-6 flex justify-between items-center mb-12">
-                  <TuningForkIcon className="w-5 h-5 text-slate-500" />
-                  <div className="w-16 h-1.5 bg-slate-800 rounded-full"></div>
-                  <SlidersHorizontal className="w-5 h-5 text-slate-500" />
-                </div>
-
-                <div className="px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-6">
-                  Perfecto
-                </div>
-
-                <div className="relative w-full max-w-[240px] aspect-[2/1] mb-6">
-                  {/* Fake Arc */}
-                  <svg viewBox="0 0 200 120" className="w-full h-full overflow-visible">
-                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" className="stroke-white/5" strokeWidth="8" strokeLinecap="round" />
-                    <path d="M 94 20 A 80 80 0 0 1 106 20" fill="none" className="stroke-emerald-500/30" strokeWidth="8" strokeLinecap="round" />
-                    <line x1="100" y1="100" x2="100" y2="20" stroke="#10b981" strokeWidth="4" strokeLinecap="round" className="drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                    <circle cx="100" cy="100" r="6" fill="#10b981" />
-                  </svg>
-                </div>
-
-                <div className="text-7xl font-black text-emerald-400 tracking-tighter drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]">A<span className="text-3xl opacity-60">4</span></div>
-                <div className="text-xs font-mono font-bold text-emerald-400 mt-2">+0 CENTS</div>
-
-                {/* Fake Tape Slider */}
-                <div className="mt-auto w-full h-16 border-t border-white/5 relative overflow-hidden flex items-end justify-center">
-                  <div className="w-0.5 h-8 bg-emerald-500 absolute bottom-0 z-10"></div>
-                  <div className="flex gap-4 opacity-50 px-4">
-                    <div className="w-px h-4 bg-slate-500"></div><div className="w-px h-6 bg-slate-500"></div><div className="w-px h-4 bg-slate-500"></div>
-                    <div className="w-px h-6 bg-slate-500"></div><div className="w-px h-4 bg-slate-500"></div><div className="w-px h-6 bg-slate-500"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+        <div className={`mt-6 px-8 py-2 rounded-full border text-lg font-bold transition-all ${currentStatus === 'tuned' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-white/5 border-transparent text-slate-500'}`}>
+          {pitch ? `${cents > 0 ? '+' : ''}${Math.round(cents)} Cents` : "-- Cents"}
         </div>
-      </section>
+      </main>
 
-      {/* Roadmap / Ecosystem Section */}
-      <section id="ecosistema" className="py-24 relative">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
-              Expandiendo el <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Ecosistema</span>
-            </h2>
-            <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-              El afinador es solo el comienzo. Estamos desarrollando una suite completa de aplicaciones que transformarán tu dispositivo móvil en una navaja suiza de producción musical.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* App Card 1 */}
-            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-6 border border-purple-500/30">
-                <Activity className="w-6 h-6 text-purple-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Vostok Metronome</h3>
-              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                Subdivisiones complejas, polirritmias, setlists guardados y sincronización Link. Una máquina del tiempo perfecta.
-              </p>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-purple-400 transition-colors">
-                En Desarrollo
-              </span>
+      <footer className="w-full h-40 relative overflow-hidden flex items-end justify-center pb-12 shrink-0">
+        <div className="absolute left-1/2 bottom-12 w-1 h-14 -translate-x-1/2 z-20 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.6)]"></div>
+        <div className="absolute left-1/2 bottom-12 flex items-end transition-transform duration-75 will-change-transform" ref={tapeRef}>
+          {Array.from({length: 81}).map((_, i) => (
+            <div key={i} className="w-[80px] flex flex-col items-center flex-shrink-0">
+              <span className="text-[10px] text-slate-600 font-bold mb-3">{noteStrings[(i + 20) % 12]}</span>
+              <div className={`w-0.5 rounded-full ${i % 12 === 0 ? 'h-8 bg-slate-500' : 'h-4 bg-slate-800'}`}></div>
             </div>
-
-            {/* App Card 2 */}
-            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-6 border border-blue-500/30">
-                <Waves className="w-6 h-6 text-blue-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Vostok Spectrum</h3>
-              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                Analizador de espectro y osciloscopio 3D en tiempo real. Ve el sonido como nunca antes lo habías visto.
-              </p>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-blue-400 transition-colors">
-                Concepto Fase Alpha
-              </span>
-            </div>
-
-            {/* App Card 3 */}
-            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center mb-6 border border-orange-500/30">
-                <Headphones className="w-6 h-6 text-orange-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Vostok 4-Track</h3>
-              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                Captura ideas instantáneamente. Grabadora multipista minimalista inspirada en la era dorada del cassette analógico.
-              </p>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-orange-400 transition-colors">
-                Próximamente
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24 border-t border-white/5 relative overflow-hidden">
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <h2 className="text-4xl font-bold mb-6">Únete a la beta privada</h2>
-          <p className="text-slate-400 mb-10 text-lg">
-            Sé el primero en probar Vostok Tuner y nuestras futuras aplicaciones. Buscamos músicos que nos ayuden a refinar la experiencia.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <input 
-              type="email" 
-              placeholder="tu@correo.com" 
-              className="px-6 py-4 rounded-full bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 w-full sm:w-80 backdrop-blur-sm"
-            />
-            <button className="px-8 py-4 rounded-full bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)]">
-              Suscribirme
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-black py-12 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <Waves className="w-5 h-5 text-blue-500" />
-            <span className="text-lg font-bold tracking-wide">Vostok<span className="font-light opacity-70">Apps</span></span>
-          </div>
-          
-          <div className="flex gap-6 text-slate-500">
-            <a href="#" className="hover:text-white transition-colors"><Globe className="w-5 h-5" /></a>
-            <a href="#" className="hover:text-white transition-colors"><MessageCircle className="w-5 h-5" /></a>
-            <a href="#" className="hover:text-white transition-colors"><Mail className="w-5 h-5" /></a>
-          </div>
-          
-          <div className="text-sm text-slate-600">
-            &copy; {new Date().getFullYear()} Vostok Apps. Todos los derechos reservados.
-          </div>
+          ))}
         </div>
       </footer>
 
+      {/* Paneles Laterales */}
+      <aside className={`fixed inset-y-0 left-0 w-80 bg-[#0F172A] z-[200] p-8 transform transition-transform duration-300 ${activePanel === 'left' ? 'translate-x-0' : '-translate-x-full'}`}>
+        <h3 className="text-2xl font-black mb-8">Instrumento</h3>
+        <div className="space-y-3">
+          {Object.values(INSTRUMENTS).map(inst => (
+            <button key={inst.id} onClick={() => {setSelectedInstrument(inst.id); setActivePanel('center');}} className={`w-full text-left p-5 rounded-2xl font-bold ${selectedInstrument === inst.id ? 'bg-blue-600' : 'bg-white/5'}`}>{inst.name}</button>
+          ))}
+        </div>
+      </aside>
+
+      <aside className={`fixed inset-y-0 right-0 w-80 bg-[#0F172A] z-[200] p-8 transform transition-transform duration-300 ${activePanel === 'right' ? 'translate-x-0' : 'translate-x-full'}`}>
+        <h3 className="text-2xl font-black mb-8">Ajustes</h3>
+        <div className="space-y-4">
+          <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase">Licencia</p>
+            <p className="font-bold">Pro Beta v1.2</p>
+          </div>
+          <button onClick={onBack} className="w-full p-5 border border-white/10 rounded-2xl font-bold flex items-center justify-center gap-2">Salir del afinador</button>
+        </div>
+      </aside>
+      
+      {activePanel !== 'center' && <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150]" onClick={() => setActivePanel('center')} />}
+    </div>
+  );
+}
+
+// --- COMPONENTE PRINCIPAL: LANDING PAGE + NAVIGATION ---
+export default function App() {
+  const [view, setView] = useState('home'); // 'home' | 'tuner'
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Animación de entrada para el afinador
+  const openTuner = () => setView('tuner');
+
+  return (
+    <div className="min-h-screen bg-[#0B0F19] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
+      
+      {/* AFINADOR CONDICIONAL */}
+      {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
+
+      {/* HEADER PERSISTENTE */}
+      <nav className={`fixed top-0 left-0 right-0 z-[40] transition-all duration-500 px-6 py-4 flex items-center justify-between ${
+        isScrolled ? 'bg-[#0B0F19]/80 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'
+      }`}>
+        <div className="flex items-center gap-2" onClick={() => setView('home')}>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-600/20 cursor-pointer">
+            <Waves className="w-6 h-6 text-white" />
+          </div>
+          <span className="text-xl font-bold tracking-tighter cursor-pointer">Vostok<span className="font-light opacity-60">Apps</span></span>
+        </div>
+        <button className="px-5 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-semibold">
+          Contacto
+        </button>
+      </nav>
+
+      {/* HERO SECTION */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+        
+        <div className="relative z-10 text-center max-w-4xl">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
+            <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></div>
+            Nuevo Lanzamiento
+          </div>
+          
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500">
+            Redefiniendo el Audio Digital Móvil
+          </h1>
+          
+          <p className="text-lg md:text-xl text-slate-400 font-medium max-w-2xl mx-auto mb-12 leading-relaxed">
+            Creamos herramientas de precisión de grado de estudio con interfaces que inspiran. Nuestra misión es potenciar tu creatividad musical desde la palma de tu mano.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button 
+              onClick={openTuner}
+              className="group relative w-full sm:w-auto px-10 py-5 bg-blue-600 rounded-2xl font-black text-lg transition-all hover:bg-blue-500 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              Descubrir Vostok Tuner
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button className="w-full sm:w-auto px-10 py-5 bg-white/5 border border-white/10 rounded-2xl font-black text-lg transition-all hover:bg-white/10 active:scale-95">
+              Ver Ecosistema
+            </button>
+          </div>
+        </div>
+
+        {/* Floating Metrics Background */}
+        <div className="absolute bottom-20 left-6 right-6 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
+          {[
+            { label: "Latencia", val: "< 10ms", icon: Zap },
+            { label: "Precisión", val: "± 0.1c", icon: Cpu },
+            { label: "Seguridad", val: "Sandbox", icon: Shield },
+            { label: "Usuarios", val: "Beta 1.0", icon: Globe }
+          ].map((m, i) => (
+            <div key={i} className="p-6 rounded-3xl bg-white/5 border border-white/5 backdrop-blur-sm flex flex-col items-center">
+              <m.icon className="w-5 h-5 text-blue-500 mb-3" />
+              <div className="text-xl font-bold">{m.val}</div>
+              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest">{m.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="py-20 px-6 border-t border-white/5 bg-black/20">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <Waves className="w-8 h-8 text-blue-500" />
+              <span className="text-2xl font-bold tracking-tighter">Vostok Apps</span>
+            </div>
+            <p className="text-slate-500 max-w-sm mb-8">
+              Innovación sonora desarrollada para músicos exigentes. Únete a la revolución del audio móvil.
+            </p>
+            <div className="flex gap-4">
+              <MessageSquare className="w-6 h-6 text-slate-600 hover:text-white transition-colors cursor-pointer" />
+              <Globe className="w-6 h-6 text-slate-600 hover:text-white transition-colors cursor-pointer" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 p-8 rounded-[2.5rem] border border-blue-500/10">
+            <h3 className="text-2xl font-bold mb-4">Únete a la beta privada</h3>
+            <p className="text-slate-400 mb-6">Sé el primero en probar nuestras futuras herramientas de producción.</p>
+            <div className="flex gap-2">
+              <input type="email" placeholder="tu@correo.com" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 focus:outline-none focus:border-blue-500 transition-colors" />
+              <button className="bg-blue-600 px-6 py-3 rounded-xl font-bold">Suscribirme</button>
+            </div>
+          </div>
+        </div>
+        <div className="mt-20 text-center text-slate-700 text-xs font-medium uppercase tracking-[0.2em]">
+          © 2026 Vostok Apps. Todos los derechos reservados.
+        </div>
+      </footer>
     </div>
   );
 }

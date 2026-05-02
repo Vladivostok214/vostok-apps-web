@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Vostok Tuner</string>
+    <string name="title_activity_main">Vostok Tuner</string>
+    <string name="package_name">com.vostokapps.tuner</string>
+    <string name="custom_url_scheme">com.vostokapps.tuner</string>
+</resources>
