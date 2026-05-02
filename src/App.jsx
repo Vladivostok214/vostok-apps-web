@@ -4,6 +4,7 @@ import {
   Smartphone, LayoutGrid, Plus, Minus, BellRing, ArrowLeft, 
   Music, Headphones, Zap, Send, ChevronDown
 } from 'lucide-react';
+import TempoSense from './TempoSense';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
 
@@ -617,6 +618,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden grid-bg">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
+      {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
 
       {/* Guía de Instalación iOS Estilizada */}
       <AnimatePresence>
@@ -776,14 +778,15 @@ export default function App() {
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { t: "Metronome", d: "POLIRRITMIAS Y SETLISTS INTELIGENTES. EL MOTOR DE TIEMPO DEFINITIVO.", s: "EN DESARROLLO", c: "#A855F7", i: Zap },
-              { t: "Spectrum", d: "ANALIZADOR DE ESPECTRO 3D. ENTIENDE EL SONIDO EN TODAS SUS DIMENSIONES.", s: "FASE ALPHA", c: "#3B82F6", i: Waves },
-              { t: "4-Track", d: "GRABADORA MULTIPISTA MINIMALISTA INSPIRADA EN LA ERA ANALÓGICA.", s: "PRÓXIMAMENTE", c: "#F97316", i: Headphones }
+              { t: "Tuner", d: "AFINACIÓN DE ALTA FIDELIDAD CON DETECCIÓN DE TONO AVANZADA.", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
+              { t: "TempoSense", d: "ANALIZADOR DE RITMO Y METRÓNOMO PROFESIONAL. TOCA PARA CALIBRAR.", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
+              { t: "4-Track", d: "GRABADORA MULTIPISTA MINIMALISTA INSPIRADA EN LA ERA ANALÓGICA.", s: "PRÓXIMAMENTE", c: "#F97316", i: Headphones, action: () => {} }
             ].map((app, i) => {
               const Icon = app.i;
               return (
                 <button 
                   key={i} 
+                  onClick={app.action}
                   aria-label={`Explorar Vostok ${app.t}`}
                   className="text-left p-10 rounded-[3rem] bg-[#080808] border border-white/5 hover:border-[#39FF14]/20 transition-all flex flex-col group active:scale-[0.98]"
                 >
