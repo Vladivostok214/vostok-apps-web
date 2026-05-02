@@ -74,7 +74,7 @@ const useWakeLock = () => {
   const wakeLock = useRef(null);
   
   const requestWakeLock = async () => {
-    if ('wakeLock' in navigator) {
+    if ('wakeLock' in navigator && 'request' in navigator.wakeLock) {
       try {
         wakeLock.current = await navigator.wakeLock.request('screen');
       } catch (err) {
@@ -89,6 +89,28 @@ const useWakeLock = () => {
   };
 
   return { requestWakeLock, releaseWakeLock };
+};
+
+const usePWAInstall = () => {
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstallPrompt(null);
+  };
+
+  return { canInstall: !!installPrompt, installApp };
 };
 
 // --- COMPONENTES DE IDENTIDAD ---
@@ -371,7 +393,7 @@ function SoundScienceSection() {
   return (
     <section className="py-24 px-6 md:p-12 bg-[#050505] flex flex-col items-center justify-center relative border-y border-white/5 overflow-hidden text-white">
       <motion.div 
-        animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
+        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full glow-cyan rounded-full will-change-transform"
       />
@@ -431,6 +453,7 @@ function SoundScienceSection() {
 export default function App() {
   const [view, setView] = useState('home');
   const [copied, setCopied] = useState(false);
+  const { canInstall, installApp } = usePWAInstall();
 
   const handleContact = useCallback(() => {
     const email = 'contacto@vostoklabs.audio';
@@ -445,15 +468,15 @@ export default function App() {
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
 
-      {/* Optimized Background Glows - Using Radial Gradients for better Mobile Depth */}
+      {/* Optimized Background Glows - Boosted for depth and visibility */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.08, 0.15, 0.08] }}
+          animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
           transition={{ duration: 15, repeat: Infinity }}
           className="absolute top-[-10%] right-[-10%] w-[120vw] h-[120vw] glow-purple rounded-full will-change-transform" 
         />
         <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.08, 0.12, 0.08] }}
+          animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 18, repeat: Infinity, delay: 2 }}
           className="absolute bottom-[-10%] left-[-10%] w-[100vw] h-[100vw] glow-green rounded-full will-change-transform" 
         />
@@ -467,18 +490,37 @@ export default function App() {
             <span className="font-light opacity-60">Labs</span>
           </span>
         </div>
-        <button 
-          onClick={handleContact} 
-          aria-label={copied ? 'Email copiado' : 'Contactar con Vostok Labs'}
-          className="px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
-        >
-          {copied ? '¡Copiado!' : 'Contacto'}
-        </button>
+        <div className="flex items-center gap-3">
+          {canInstall && (
+            <button 
+              onClick={installApp} 
+              aria-label="Descargar aplicación"
+              className="hidden sm:flex px-6 py-2.5 bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF14]/20 active:scale-95 transition-all"
+            >
+              Descargar App
+            </button>
+          )}
+          <button 
+            onClick={handleContact} 
+            aria-label={copied ? 'Email copiado' : 'Contactar con Vostok Labs'}
+            className="px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
+          >
+            {copied ? '¡Copiado!' : 'Contacto'}
+          </button>
+        </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="min-h-screen flex flex-col items-center justify-center px-8 text-center relative pt-20 z-10">
+      <section className="min-h-screen flex flex-col items-center justify-center px-8 text-center relative pt-40 pb-20 z-10">
         <div className="max-w-4xl flex flex-col items-center">
+          {canInstall && (
+            <button 
+              onClick={installApp} 
+              className="sm:hidden mb-8 px-8 py-3 bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
+            >
+              Instalar App Nativa
+            </button>
+          )}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
