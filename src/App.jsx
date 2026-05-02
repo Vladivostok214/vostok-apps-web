@@ -679,29 +679,29 @@ export default function App() {
       </nav>
 
       {/* Hero Section */}
-      <section className="min-h-screen flex flex-col items-center justify-center px-8 text-center relative pt-40 pb-20 z-10">
+      <section className="min-h-screen flex flex-col items-center justify-start px-8 text-center relative pt-24 pb-8 z-10">
         <div className="max-w-4xl flex flex-col items-center flex-grow justify-center">
           {canShowMobile && (
             <button 
               onClick={handleInstall} 
-              className="sm:hidden mb-12 px-8 py-4 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-full text-[11px] font-black uppercase tracking-[0.4em] active:scale-95 transition-all shadow-[0_0_20px_rgba(57,255,20,0.1)]"
+              className="sm:hidden mb-6 px-6 py-3 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
             >
-              Instalar App Nativa
+              Instalar App
             </button>
           )}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-block px-5 py-2 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[10px] font-black uppercase tracking-[0.5em] mb-10"
+            className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mb-6"
           >
             Analog Audio Laboratory
           </motion.div>
           
           <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-6xl lg:text-8xl font-black tracking-tighter leading-[0.95] mb-12 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase select-none"
+            className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase"
           >
             Redefiniendo el <br/> Audio Digital
           </motion.h1>
@@ -710,78 +710,51 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-16 leading-relaxed tracking-tight select-none"
+            className="text-sm md:text-lg text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed tracking-tight"
           >
-            Creamos herramientas de precisión de grado de estudio con interfaces táctiles que inspiran la <span className="font-bold text-white">creación musical</span>.
+            Herramientas de grado de estudio con interfaces táctiles diseñadas para la creación musical precisa.
           </motion.p>
           
-          <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto">
+          <div className="flex flex-row flex-wrap gap-3 justify-center w-full sm:w-auto mb-12">
             <motion.button 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleSetView('tuner')} 
               aria-label="Abrir Afinador Vostok"
-              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
-              style={{ WebkitBackdropFilter: 'blur(20px)' }}
+              className="px-8 py-3 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_20px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-2"
             >
-              <TuningForkIcon className="w-6 h-6 sm:w-8 sm:h-8 text-[#39FF14] group-hover:scale-110 transition-transform" />
-              <div className="text-lg sm:text-2xl leading-none uppercase tracking-tighter flex items-center">
-                <span className="font-black">Vostok</span>
-                <span className="font-light opacity-70 ml-1">Tuner</span>
-              </div>
+              <TuningForkIcon className="w-5 h-5 text-[#39FF14]" />
+              <span className="font-black text-sm uppercase tracking-widest">Tuner</span>
             </motion.button>
             
             <motion.button 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => document.getElementById('ecosistema')?.scrollIntoView({behavior: 'smooth'})} 
-              aria-label="Ver el Ecosistema de productos"
-              className="flex-1 sm:flex-none px-6 sm:px-8 py-2.5 bg-white/5 border border-white/10 text-white rounded-full font-black text-[10px] sm:text-sm hover:bg-white/10 active:scale-95 transition-all uppercase tracking-[0.15em] backdrop-blur-md flex items-center justify-center shadow-lg"
-              style={{ WebkitBackdropFilter: 'blur(20px)' }}
+              aria-label="Ver el Ecosistema"
+              className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-widest"
             >
               Ecosistema
             </motion.button>
           </div>
         </div>
 
-        {/* Indicador de Scroll de Alta Visibilidad - Estética Vostok Pulse */}
+        {/* Indicador de Scroll optimizado para visibilidad Above-the-fold */}
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 2, duration: 1 }}
-          className="mt-20 flex flex-col items-center pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1, duration: 0.5 }}
+          className="flex flex-col items-center pointer-events-none mb-4"
         >
-          <span className="text-[9px] font-black uppercase tracking-[0.5em] text-[#39FF14] mb-4 drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]">Descubrir</span>
-          
-          <div className="relative h-16 w-[1px] bg-white/10 overflow-hidden">
+          <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#39FF14] mb-2 drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">Sigue el pulso</span>
+          <div className="relative h-12 w-[1px] bg-white/10 overflow-hidden">
             <motion.div
-              animate={{ 
-                y: [-64, 64],
-                opacity: [0, 1, 0]
-              }}
-              transition={{ 
-                duration: 2, 
-                repeat: Infinity, 
-                ease: "linear" 
-              }}
-              className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-[#39FF14] to-transparent shadow-[0_0_10px_#39FF14]"
+              animate={{ y: [-48, 48], opacity: [0, 1, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-[#39FF14] to-transparent shadow-[0_0_8px_#39FF14]"
             />
           </div>
-
-          <motion.div
-            animate={{ 
-              y: [0, 5, 0],
-              opacity: [0.4, 1, 0.4]
-            }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="mt-2"
-          >
-            <ChevronDown className="w-6 h-6 text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,0.8)]" />
-          </motion.div>
+          <ChevronDown className="w-4 h-4 text-[#39FF14] mt-1 drop-shadow-[0_0_5px_rgba(57,255,20,0.8)]" />
         </motion.div>
       </section>
 
