@@ -21,7 +21,10 @@ export default function SPLMeter({ onBack }) {
         let sum = 0;
         for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
         const average = sum / dataArray.length;
-        setDb(Math.round(20 * Math.log10(average + 1)));
+        
+        // Calibración: 20dB es el piso, normalizado para no quedar en cero absoluto
+        const calculatedDb = Math.max(20, Math.round(20 * Math.log10(average + 1) + 20));
+        setDb(calculatedDb);
         requestAnimationFrame(update);
       };
       update();

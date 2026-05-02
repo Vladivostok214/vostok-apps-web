@@ -27,24 +27,26 @@ export default function SpectrumAnalyzer({ onBack }) {
   };
 
   const draw = () => {
-    if (!isFrozen) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      const bufferLength = analyser.current.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      analyser.current.getByteFrequencyData(dataArray);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const bufferLength = analyser.current.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.current.getByteFrequencyData(dataArray);
 
-      ctx.fillStyle = '#050505';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const barWidth = (canvas.width / bufferLength) * 2;
-      for (let i = 0; i < bufferLength; i++) {
-        const barHeight = (dataArray[i] / 255) * canvas.height;
-        ctx.fillStyle = `hsl(${200 + i / 5}, 100%, 50%)`;
-        ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
-      }
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    for (let i = 0; i < bufferLength; i++) {
+      // Sensibilidad aumentada: usamos una escala logarítmica para los bajos
+      const barHeight = Math.pow(dataArray[i] / 255, 1.5) * canvas.height + 2;
+      ctx.fillStyle = `hsla(${200 + i / 2}, 100%, 60%, 0.8)`;
+      ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 2, barHeight);
     }
-    animationRef.current = requestAnimationFrame(draw);
+    
+    if (!isFrozen) {
+        animationRef.current = requestAnimationFrame(draw);
+    }
   };
 
   return (
