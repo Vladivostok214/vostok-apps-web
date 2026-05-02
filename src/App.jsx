@@ -194,14 +194,7 @@ const usePWAInstall = () => {
   }, []);
 
   const installApp = async () => {
-    if (isIOS) {
-      alert('Para instalar Vostok Tuner: Pulsa el botón "Compartir" de Safari (el cuadrado con flecha) y elige "Añadir a la pantalla de inicio".');
-      return;
-    }
-    if (!installPrompt) {
-      alert('Para instalar: Usa el menú de tu navegador y selecciona "Instalar aplicación" o "Añadir a pantalla de inicio".');
-      return;
-    }
+    if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') setInstallPrompt(null);
@@ -590,7 +583,8 @@ function SoundScienceSection() {
 export default function App() {
   const [view, setView] = useState('home');
   const [copied, setCopied] = useState(false);
-  const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
+  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const { canInstall, canShowMobile, installApp, isInstalled, isIOS } = usePWAInstall();
 
   useEffect(() => {
     initAnalytics();
@@ -613,12 +607,34 @@ export default function App() {
 
   const handleInstall = () => {
     trackEvent('pwa_install_click');
-    installApp();
+    if (isIOS) {
+      setShowIOSGuide(true);
+    } else {
+      installApp();
+    }
   };
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
+
+      {/* Guía de Instalación iOS Estilizada */}
+      <AnimatePresence>
+        {showIOSGuide && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6"
+            onClick={() => setShowIOSGuide(false)}
+          >
+            <div className="max-w-xs w-full bg-neutral-900 border border-white/10 p-8 rounded-[2.5rem] text-center shadow-2xl">
+              <VostokLogo className="w-16 h-16 mx-auto mb-8" />
+              <h3 className="text-xl font-black mb-4 uppercase tracking-tighter">Instalar Vostok</h3>
+              <p className="text-slate-400 text-sm font-bold mb-8 leading-relaxed">Pulsa el botón "Compartir" de Safari y elige "Añadir a la pantalla de inicio".</p>
+              <button className="w-full py-4 bg-[#39FF14] text-black rounded-full text-[10px] font-black uppercase tracking-widest">Entendido</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Optimized Background Glows - Boosted for depth and visibility */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
