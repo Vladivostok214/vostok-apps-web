@@ -715,24 +715,29 @@ export default function App() {
             Herramientas de grado de estudio con interfaces táctiles diseñadas para la creación musical precisa.
           </motion.p>
           
-          <div className="flex flex-row flex-wrap gap-3 justify-center w-full sm:w-auto mb-12">
+          <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto mb-16">
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleSetView('tuner')} 
               aria-label="Abrir Afinador Vostok"
-              className="px-8 py-3 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_20px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none px-8 sm:px-10 py-3 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
+              style={{ WebkitBackdropFilter: 'blur(20px)' }}
             >
-              <TuningForkIcon className="w-5 h-5 text-[#39FF14]" />
-              <span className="font-black text-sm uppercase tracking-widest">Tuner</span>
+              <TuningForkIcon className="w-6 h-6 text-[#39FF14] group-hover:scale-110 transition-transform" />
+              <div className="text-xl leading-none uppercase tracking-tighter flex items-center">
+                <span className="font-black">Vostok</span>
+                <span className="font-light opacity-70 ml-1">Tuner</span>
+              </div>
             </motion.button>
             
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => document.getElementById('ecosistema')?.scrollIntoView({behavior: 'smooth'})} 
-              aria-label="Ver el Ecosistema"
-              className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-widest"
+              aria-label="Ver el Ecosistema de productos"
+              className="flex-1 sm:flex-none px-8 sm:px-10 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-[0.15em] backdrop-blur-md flex items-center justify-center shadow-lg"
+              style={{ WebkitBackdropFilter: 'blur(20px)' }}
             >
               Ecosistema
             </motion.button>
