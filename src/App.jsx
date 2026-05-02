@@ -747,19 +747,39 @@ export default function App() {
             </motion.button>
           </div>
 
-          {/* Indicador de Scroll para descubrir contenido */}
+          {/* Indicador de Scroll de Alta Visibilidad - Estética Vostok Pulse */}
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 1 }}
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2, duration: 1 }}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none"
           >
-            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-600">Explorar</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.5em] text-[#39FF14] mb-4 drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]">Descubrir</span>
+            
+            <div className="relative h-16 w-[1px] bg-white/10 overflow-hidden">
+              <motion.div
+                animate={{ 
+                  y: [-64, 64],
+                  opacity: [0, 1, 0]
+                }}
+                transition={{ 
+                  duration: 2, 
+                  repeat: Infinity, 
+                  ease: "linear" 
+                }}
+                className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-[#39FF14] to-transparent shadow-[0_0_10px_#39FF14]"
+              />
+            </div>
+
             <motion.div
-              animate={{ y: [0, 8, 0] }}
+              animate={{ 
+                y: [0, 5, 0],
+                opacity: [0.4, 1, 0.4]
+              }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="mt-2"
             >
-              <ChevronDown className="w-5 h-5 text-slate-700" />
+              <ChevronDown className="w-6 h-6 text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,0.8)]" />
             </motion.div>
           </motion.div>
         </div>
