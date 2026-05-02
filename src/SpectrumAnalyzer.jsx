@@ -26,27 +26,52 @@ export default function SpectrumAnalyzer({ onBack }) {
     draw();
   };
 
-  const draw = () => {
+  const peakRef = useRef(new Float32Array(512));
+  const [lastFrame, setLastFrame] = useState(0);
+
+  const draw = (time) => {
+    // Reducir la tasa de refresco a ~30fps para una visión general más calmada
+    if (time - lastFrame < 33) {
+      animationRef.current = requestAnimationFrame(draw);
+      return;
+    }
+    setLastFrame(time);
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const bufferLength = analyser.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyser.current.getByteFrequencyData(dataArray);
 
-    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.4)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const barWidth = (canvas.width / bufferLength) * 2.5;
+    const barWidth = (canvas.width / bufferLength) * 2;
+    
     for (let i = 0; i < bufferLength; i++) {
-      // Sensibilidad aumentada: usamos una escala logarítmica para los bajos
-      const barHeight = Math.pow(dataArray[i] / 255, 1.5) * canvas.height + 2;
-      ctx.fillStyle = `hsla(${200 + i / 2}, 100%, 60%, 0.8)`;
-      ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 2, barHeight);
+      // Dibujar barras del espectro
+      const barHeight = Math.pow(dataArray[i] / 255, 1.2) * (canvas.height - 40);
+      ctx.fillStyle = `hsla(${200 + i / 10}, 80%, 50%, 0.6)`;
+      ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
+
+      // Línea de Peak Hold
+      if (dataArray[i] > peakRef.current[i]) peakRef.current[i] = dataArray[i];
+      else peakRef.current[i] -= 0.5; // Decaimiento lento
+      
+      const peakHeight = Math.pow(peakRef.current[i] / 255, 1.2) * (canvas.height - 40);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(i * barWidth, canvas.height - peakHeight, barWidth - 1, 2);
     }
     
-    if (!isFrozen) {
-        animationRef.current = requestAnimationFrame(draw);
-    }
+    // Etiqueta de picos (solo en la frecuencia dominante visible)
+    ctx.fillStyle = '#39FF14';
+    ctx.font = '10px monospace';
+    const maxVal = Math.max(...dataArray);
+    const maxIdx = dataArray.indexOf(maxVal);
+    const freq = Math.round(maxIdx * audioCtx.current.sampleRate / analyser.current.fftSize);
+    ctx.fillText(`${freq}Hz`, maxIdx * barWidth, canvas.height - (maxVal/255)*canvas.height - 10);
+
+    animationRef.current = requestAnimationFrame(draw);
   };
 
   return (
