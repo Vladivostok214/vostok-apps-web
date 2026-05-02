@@ -615,7 +615,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden grid-bg">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
 
       {/* Guía de Instalación iOS Estilizada */}
