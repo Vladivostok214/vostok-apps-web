@@ -5,6 +5,7 @@ import {
   Music, Headphones, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // --- OPTIMIZACIÓN DE PROCESAMIENTO ---
 // Pre-asignamos memoria para evitar Garbage Collection en el loop de audio
@@ -660,6 +661,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      <SpeedInsights />
     </div>
   );
 }
