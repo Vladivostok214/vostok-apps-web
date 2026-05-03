@@ -147,10 +147,78 @@ const INSTRUMENTS = [
 ];
 
 const PROTAGONISTAS = [
-  { id: 'pitagoras', nombre: 'PITÁGORAS', titulo: 'El Monocordio', descripcion: 'Descubrió que la armonía es matemática pura. Dividiendo una cuerda en radios exactos, estableció las bases de la escala musical occidental.', grafico: 'triangle', color: '#00f5ff' },
-  { id: 'sauveur', nombre: 'JOSEPH SAUVEUR', titulo: 'Padre de la Acústica', descripcion: 'Fue el primero en calcular la frecuencia absoluta de un sonido e identificar los nodos en cuerdas vibrantes.', grafico: 'nodes', color: '#00d1ff' },
-  { id: 'helmholtz', nombre: 'VON HELMHOLTZ', titulo: 'Analista del Timbre', descripcion: 'Inventó los resonadores para descomponer sonidos complejos. Su trabajo permitió entender cómo el cerebro distingue el color tonal.', grafico: 'ai', color: '#A855F7' },
-  { id: 'vostok', nombre: 'VOSTOK ENGINE', titulo: 'Super-Resolución IA', descripcion: 'Detección de tono mediante redes neuronales que filtran el ruido ambiente para una precisión quirúrgica.', grafico: 'symmetry', color: '#ffffff' }
+  {
+    id: 'pitagoras',
+    nombre: 'PITÁGORAS',
+    titulo: 'El Monocordio',
+    descripcion: 'Estableció que la música es matemática pura. Al dividir una cuerda en radios exactos (2:1, 3:2), sentó las bases de la escala musical y los intervalos que hoy rigen la afinación occidental.',
+    grafico: 'triangle',
+    color: '#00f5ff'
+  },
+  {
+    id: 'sauveur',
+    nombre: 'JOSEPH SAUVEUR',
+    titulo: 'Padre de la Acústica',
+    descripcion: 'Científico sordo que acuñó el término "Acústica". Fue el primero en calcular la frecuencia absoluta de un sonido e identificar físicamente los nodos y vientres en cuerdas vibrantes.',
+    grafico: 'nodes',
+    color: '#00d1ff'
+  },
+  {
+    id: 'chladni',
+    nombre: 'ERNST CHLADNI',
+    titulo: 'El Visualizador',
+    descripcion: 'Reveló la geometría invisible del sonido. Sus experimentos con arena sobre placas de metal mostraron patrones simétricos complejos, demostrando que el sonido tiene una forma física.',
+    grafico: 'symmetry',
+    color: '#00b8ff'
+  },
+  {
+    id: 'helmholtz',
+    nombre: 'VON HELMHOLTZ',
+    titulo: 'Analista del Timbre',
+    descripcion: 'Inventó los resonadores esféricos para descomponer sonidos complejos. Su trabajo permitió entender cómo el cerebro humano distingue la "huella digital" o color tonal de cada instrumento.',
+    grafico: 'resonator',
+    color: '#0099ff'
+  },
+  {
+    id: 'edison',
+    nombre: 'THOMAS EDISON',
+    titulo: 'Registro Mecánico',
+    descripcion: 'Con el fonógrafo, logró que el sonido dejara de ser efímero. Transformó la presión del aire en surcos físicos, permitiendo por primera vez el análisis y la reproducción de la onda capturada.',
+    grafico: 'cylinder',
+    color: '#7000ff'
+  },
+  {
+    id: 'deforest',
+    nombre: 'LEE DE FOREST',
+    titulo: 'Amplificación Electrónica',
+    descripcion: 'Su invento, el triodo, permitió amplificar señales eléctricas débiles. Es el ancestro directo de todos los preamplificadores que hoy procesan la señal de audio antes de ser analizada.',
+    grafico: 'triode',
+    color: '#a000ff'
+  },
+  {
+    id: 'conn',
+    nombre: 'CONN LTD.',
+    titulo: 'Precisión Estroboscópica',
+    descripcion: 'Lanzaron el Stroboconn en 1936. Utilizaba discos giratorios y luz de neón para lograr una precisión de 0.1 cents, la referencia mecánica que Vostok ahora lleva al plano digital.',
+    grafico: 'strobe',
+    color: '#00ffc8'
+  },
+  {
+    id: 'cooley',
+    nombre: 'COOLEY & TUKEY',
+    titulo: 'Algoritmo FFT',
+    descripcion: 'Desarrollaron la Transformada Rápida de Fourier. Es el motor matemático que permite a los procesadores modernos descomponer el audio en frecuencias individuales en tiempo real.',
+    grafico: 'spectrum',
+    color: '#00ff8c'
+  },
+  {
+    id: 'cheveigne',
+    nombre: 'ALAIN DE CHEVEIGNÉ',
+    titulo: 'Algoritmo YIN',
+    descripcion: 'Revolucionó la detección de tono con el algoritmo YIN. Su lógica de estimación de frecuencia permite que el afinador sea estable y preciso incluso con señales complejas o ruidosas.',
+    grafico: 'correlation',
+    color: '#00ff55'
+  }
 ];
 
 // --- HOOKS PERSONALIZADOS ---
@@ -221,7 +289,7 @@ const TuningForkIcon = ({ className, strokeColor = "currentColor" }) => (
 
 const RedditIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.056 1.597.04.21.06.422.06.637 0 2.73-3.385 4.943-7.56 4.943-4.175 0-7.56-2.213-7.56-4.943 0-.213.02-.424.062-.643a1.756 1.756 0 0 1-1.054-1.59c0-.968.786-1.754 1.754-1.754.463 0 .875.18 1.179.475 1.187-.85 2.812-1.415 4.606-1.498l.906-4.239a.44.44 0 0 1 .52-.339l2.815.594c.03-.265.249-.471.52-.471zm-7.39 8.59c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1 1.1-.49 1.1-1.1-.49-1.1-1.1-1.1zm4.76 0c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1 1.1-.49 1.1-1.1-.49-1.1-1.1-1.1zm-3.154 3.386c-.118 0-.213.096-.213.214 0 .43.348.78.777.78s.777-.35.777-.78a.214.214 0 0 0-.213-.214h-1.128z" />
+    <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-10.056 1.597.04.21.06.422.06.637 0 2.73-3.385 4.943-7.56 4.943-4.175 0-7.56-2.213-7.56-4.943 0-.213.02-.424.062-.643a1.756 1.756 0 0 1-1.054-1.59c0-.968.786-1.754 1.754-1.754.463 0 .875.18 1.179.475 1.187-.85 2.812-1.415 4.606-1.498l.906-4.239a.44.44 0 0 1 .52-.339l2.815.594c.03-.265.249-.471.52-.471zm-7.39 8.59c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1 1.1-.49 1.1-1.1-.49-1.1-1.1-1.1zm4.76 0c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1 1.1-.49 1.1-1.1-.49-1.1-1.1-1.1zm-3.154 3.386c-.118 0-.213.096-.213.214 0 .43.348.78.777.78s.777-.35.777-.78a.214.214 0 0 0-.213-.214h-1.128z" />
   </svg>
 );
 
@@ -232,12 +300,20 @@ const GraphicIcon = ({ type, color }) => {
       transition: { duration: 5, repeat: Infinity, ease: "easeInOut" }
     }
   };
+  const baseClass = "w-full h-full flex items-center justify-center opacity-30 pointer-events-none";
+  
   return (
-    <motion.div variants={floatVariants} animate="animate" className="w-full h-full flex items-center justify-center opacity-30 pointer-events-none">
-      {type === 'triangle' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1"><path d="M50 15 L85 85 L15 85 Z" /></svg>}
-      {type === 'nodes' && <svg viewBox="0 0 120 60" className="w-56 h-32" fill="none" stroke={color} strokeWidth="1"><path d="M10 30 Q 35 5, 60 30 T 110 30" /><path d="M10 30 Q 35 55, 60 30 T 110 30" strokeDasharray="4 4" /></svg>}
-      {type === 'symmetry' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="0.8"><circle cx="50" cy="50" r="40" /><path d="M50 10 L50 90 M10 50 L90 50" strokeDasharray="2 2" /></svg>}
-      {type === 'ai' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1"><circle cx="50" cy="50" r="12" /><circle cx="50" cy="50" r="30" strokeDasharray="6 6" /></svg>}
+    <motion.div variants={floatVariants} animate="animate" className={baseClass}>
+      {type === 'triangle' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><path d="M50 10 L90 90 L10 90 Z" /><circle cx="50" cy="10" r="2" fill={color} /><line x1="10" y1="90" x2="90" y2="90" strokeDasharray="4 4" /></svg>}
+      {type === 'nodes' && <svg viewBox="0 0 100 40" className="w-56 h-32" fill="none" stroke={color} strokeWidth="1.5"><path d="M0 20 Q 25 0, 50 20 T 100 20" /><path d="M0 20 Q 25 40, 50 20 T 100 20" strokeDasharray="2 2" /><circle cx="25" cy="10" r="3" fill={color} /><circle cx="75" cy="10" r="3" fill={color} /></svg>}
+      {type === 'symmetry' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1"><circle cx="50" cy="50" r="40" /><path d="M50 10 L50 90 M10 50 L90 50" /><path d="M21 21 L79 79 M21 79 L79 21" strokeDasharray="3 3" /></svg>}
+      {type === 'resonator' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><circle cx="50" cy="55" r="35" /><rect x="42" y="5" width="16" height="15" rx="2" /><path d="M42 20 L42 25 M58 20 L58 25" /></svg>}
+      {type === 'cylinder' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><ellipse cx="50" cy="30" rx="30" ry="10" /><path d="M20 30 L20 70 A30 10 0 0 0 80 70 L80 30" /><path d="M50 45 L50 85" strokeDasharray="2 2" /></svg>}
+      {type === 'triode' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><rect x="35" y="10" width="30" height="70" rx="15" /><line x1="50" y1="25" x2="50" y2="35" /><path d="M40 45 H60 M40 50 H60 M40 55 H60" strokeDasharray="2 1" /><line x1="45" y1="70" x2="55" y2="70" /></svg>}
+      {type === 'strobe' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1"><circle cx="50" cy="50" r="45" /><circle cx="50" cy="50" r="35" strokeDasharray="10 5" /><circle cx="50" cy="50" r="25" strokeDasharray="5 10" /><circle cx="50" cy="50" r="5" fill={color} /></svg>}
+      {type === 'spectrum' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><line x1="10" y1="90" x2="90" y2="90" /><path d="M10 90 L25 40 L40 80 L55 10 L70 85 L90 90" strokeWidth="2" /><path d="M10 90 L90 90" /></svg>}
+      {type === 'correlation' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><path d="M10 50 C 20 20, 30 80, 40 50 C 50 20, 60 80, 70 50 C 80 20, 90 80, 100 50" /><line x1="10" y1="10" x2="10" y2="90" opacity="0.3" /></svg>}
+      {type === 'ai' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><circle cx="50" cy="50" r="10" fill={color} fillOpacity="0.2" /><circle cx="20" cy="30" r="4" fill={color} /><circle cx="20" cy="70" r="4" fill={color} /><circle cx="80" cy="30" r="4" fill={color} /><circle cx="80" cy="70" r="4" fill={color} /><line x1="24" y1="33" x2="42" y2="45" /><line x1="24" y1="67" x2="42" y2="55" /><line x1="76" y1="33" x2="58" y2="45" /><line x1="76" y1="67" x2="58" y2="55" /></svg>}
     </motion.div>
   );
 };
@@ -563,62 +639,123 @@ function VostokTuner({ onBack }) {
 // --- LANDING COMPONENTS ---
 function SoundScienceSection() {
   const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
   const current = PROTAGONISTAS[index];
+
+  const nextCard = () => {
+    let nextIdx;
+    do {
+      nextIdx = Math.floor(Math.random() * PROTAGONISTAS.length);
+    } while (nextIdx === index);
+    
+    setDirection(nextIdx > index ? 1 : -1);
+    setIndex(nextIdx);
+    trackEvent('genealogy_card_change', { to: PROTAGONISTAS[nextIdx].id });
+  };
+
   return (
-    <section className="py-24 px-6 md:p-12 bg-[#050505] flex flex-col items-center justify-center relative border-y border-white/5 overflow-hidden text-white">
-      <motion.div 
-        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full glow-cyan rounded-full will-change-transform"
-      />
+    <section className="py-32 px-6 md:p-12 bg-[#050505] flex flex-col items-center justify-center relative border-y border-white/5 overflow-hidden text-white">
+      {/* Elementos decorativos de fondo */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full glow-cyan rounded-full opacity-30" />
+      </div>
       
-      <div className="mb-12 text-center z-10">
-        <div className="flex items-center justify-center gap-3 mb-4">
+      <div className="mb-16 text-center z-10">
+        <div className="flex items-center justify-center gap-2 mb-4">
           <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_10px_#06b6d4]" />
-          <span className="text-[10px] uppercase tracking-[0.5em] text-cyan-500/80 font-bold">Vostok Archivo Histórico</span>
+          <span className="text-[10px] uppercase tracking-[0.3em] text-cyan-500/80 font-black">Vostok Archivo Histórico</span>
         </div>
-        <h2 className="text-4xl md:text-5xl font-light text-white uppercase tracking-tighter leading-tight">La Genealogía del <br/><span className="font-black text-cyan-400">Sonido</span></h2>
+        <h2 className="text-4xl md:text-5xl font-light tracking-tighter text-white uppercase leading-tight">
+          La Genealogía del <br/><span className="font-black text-cyan-400">Sonido</span>
+        </h2>
       </div>
 
-      <div className="relative w-full max-w-xl z-10" onClick={() => setIndex((prev) => (prev + 1) % PROTAGONISTAS.length)}>
-        <motion.div 
-          key={current.id} 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          whileTap={{ scale: 0.98 }}
-          className="cursor-pointer group relative bg-neutral-900/40 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 transition-all hover:border-cyan-500/30 shadow-2xl overflow-hidden active:bg-white/[0.02] will-change-transform"
-          style={{ WebkitBackdropFilter: 'blur(20px)' }}
-        >
-          <div className="absolute top-6 right-6 md:hidden">
-            <motion.div 
-              animate={{ opacity: [0.3, 0.7, 0.3] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="text-[8px] font-black text-cyan-500 uppercase tracking-widest"
-            >
-              Interactivo
-            </motion.div>
-          </div>
-
-          <div className="absolute -right-16 -top-16 w-64 h-64 pointer-events-none opacity-20 md:opacity-30 group-hover:opacity-50 transition-opacity">
-            <GraphicIcon type={current.grafico} color={current.color} />
-          </div>
-          <div className="relative flex flex-col min-h-[280px] justify-between z-10">
-            <div>
-              <h2 className="text-[10px] font-mono text-cyan-500 mb-4 tracking-[0.3em] uppercase opacity-60 font-bold">Hitos_Tecnológicos</h2>
-              <div className="text-4xl font-black text-white leading-none uppercase mb-8 tracking-tighter">{current.nombre}</div>
-              <span className="inline-block px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-bold text-cyan-400 uppercase tracking-[0.3em] mb-6">{current.titulo}</span>
-              <p className="text-lg text-slate-300 font-light leading-relaxed pl-6 border-l-2 border-cyan-500/20">{current.descripcion}</p>
-            </div>
-            <div className="pt-8 border-t border-white/5 flex items-center justify-between text-[11px] font-mono">
-              <div className="flex gap-8">
-                <div className="flex flex-col"><span className="text-slate-600 uppercase tracking-widest mb-1 font-bold">Estado</span><span className="text-cyan-400 font-black">Verificado</span></div>
-                <div className="flex flex-col"><span className="text-slate-600 uppercase tracking-widest mb-1 font-bold">ID_Archivo</span><span className="text-slate-500">VSK-{current.id.toUpperCase()}</span></div>
+      <div className="relative w-full max-w-xl z-10 perspective-1000">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={current.id}
+            initial={{ opacity: 0, x: direction * 50, rotateY: direction * 10 }}
+            animate={{ opacity: 1, x: 0, rotateY: 0 }}
+            exit={{ opacity: 0, x: -direction * 50, rotateY: -direction * 10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            onClick={nextCard}
+            className="cursor-pointer group relative"
+          >
+            <div className="relative bg-neutral-900/40 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 shadow-2xl overflow-hidden transition-all duration-500 group-hover:border-cyan-500/30">
+              
+              {/* Icono gráfico en el fondo */}
+              <div className="absolute right-[-40px] top-[-40px] w-64 h-64 pointer-events-none opacity-20 md:opacity-30 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-6">
+                <GraphicIcon type={current.grafico} color={current.color} />
               </div>
-              <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+
+              {/* Contenido de la tarjeta */}
+              <div className="relative flex flex-col h-full min-h-[360px] justify-between z-10">
+                <div>
+                  <div className="flex items-start justify-between mb-10">
+                    <div>
+                      <h2 className="text-[10px] font-mono text-cyan-500 mb-2 tracking-[0.3em] font-black uppercase opacity-60">HITOS_TECNOLÓGICOS</h2>
+                      <div className="text-4xl font-black text-white tracking-tighter leading-none uppercase">
+                        {current.nombre}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-full bg-white/5 border border-white/10 group-hover:bg-cyan-500/10 group-hover:border-cyan-500/20 transition-colors">
+                      <ChevronRight className="w-5 h-5 text-cyan-400" />
+                    </div>
+                  </div>
+
+                  <div className="mb-8">
+                    <span className="inline-block px-4 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-6">
+                      {current.titulo}
+                    </span>
+                    <p className="text-lg text-slate-300 leading-relaxed font-light pl-6 border-l-2 border-cyan-500/20">
+                      {current.descripcion}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer técnico de la tarjeta */}
+                <div className="pt-8 border-t border-white/5 flex items-center justify-between">
+                  <div className="flex gap-8">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-600 font-bold mb-1">Origen</span>
+                      <span className="text-[11px] font-mono text-cyan-400 uppercase font-black tracking-wider">Archivo_Vostok</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-600 font-bold mb-1">Hito</span>
+                      <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">{index + 1} / {PROTAGONISTAS.length}</span>
+                    </div>
+                  </div>
+                  <div className="h-6 w-20 opacity-30">
+                     <svg viewBox="0 0 100 20" className="w-full h-full"><path d="M0 10 L10 10 L15 2 L25 18 L30 10 L100 10" stroke={current.color} fill="none" strokeWidth="1.5" /></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Brillo interno al pasar el mouse */}
+              <div 
+                className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ 
+                  background: `radial-gradient(circle at center, ${current.color}05 0%, transparent 70%)` 
+                }} 
+              />
             </div>
-          </div>
-        </motion.div>
+            
+            {/* Indicador de acción */}
+            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[9px] font-mono tracking-widest text-cyan-500 uppercase font-black">
+              Click para explorar otro hito
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Indicador de progreso inferior */}
+      <div className="mt-20 flex gap-3 z-10">
+        {PROTAGONISTAS.map((_, i) => (
+          <div 
+            key={i} 
+            className={`h-1 rounded-full transition-all duration-500 ${i === index ? 'w-10 bg-cyan-500 shadow-[0_0_10px_#06b6d4]' : 'w-2 bg-white/10'}`} 
+          />
+        ))}
       </div>
     </section>
   );

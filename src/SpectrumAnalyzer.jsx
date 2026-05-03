@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Pause, Play, Mic, RotateCw } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Mic } from 'lucide-react';
 
 export default function SpectrumAnalyzer({ onBack }) {
   const [isRunning, setIsRunning] = useState(false);
@@ -39,168 +39,171 @@ export default function SpectrumAnalyzer({ onBack }) {
   }, []);
 
   const draw = useCallback(() => {
-    if (isFrozen || !canvasRef.current || !analyser.current) {
-      animationRef.current = requestAnimationFrame(draw);
-      return;
+    function loop() {
+      if (isFrozen || !canvasRef.current || !analyser.current) {
+        animationRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      const wCanvas = waterfallCanvasRef.current;
+      const wCtx = wCanvas.getContext('2d', { alpha: false });
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.width / dpr;
+      const height = canvas.height / dpr;
+
+      analyser.current.getByteFrequencyData(dataArray.current);
+      
+      // --- NOIR-TECH CANVAS STYLING ---
+      ctx.fillStyle = '#030303';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      // 1. Grid Milimétrica
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+      for (let y = 0; y < height; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+
+      const barCount = 128;
+      const barWidth = width / barCount;
+      const sampleRate = audioCtx.current.sampleRate;
+      let frameMaxVal = -1;
+      let frameMaxFreq = 0;
+
+      for (let i = 0; i < barCount; i++) {
+          const freq = (i / barCount) * (sampleRate / 2);
+          let valRaw = dataArray.current[i];
+          
+          // 3. Compensación NRC (Noise/Response Compensation)
+          // Aplanamos la curva del micro móvil: Boost sutil en extremos
+          const nrcLow = freq < 150 ? (150 - freq) / 8 : 0;
+          const nrcHigh = freq > 10000 ? (freq - 10000) / 800 : 0;
+          let val = Math.min(255, valRaw + nrcLow + nrcHigh);
+          
+          const barHeight = Math.pow(val / 255, 1.4) * (height - 80);
+          
+          // Dynamic HSLA (Noir-Tech transition)
+          const hue = 240 - (i / barCount) * 120; // Cyan to Blue
+          ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
+          ctx.fillRect(i * barWidth, height - barHeight - 40, barWidth - 1, barHeight);
+
+          // Peak Hold Rendering
+          if (val > peakArray.current[i]) peakArray.current[i] = val;
+          else peakArray.current[i] -= 0.8; // Decaimiento suave REW
+          
+          const pH = Math.pow(peakArray.current[i] / 255, 1.4) * (height - 80);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.fillRect(i * barWidth, height - pH - 42, barWidth - 1, 1.5);
+
+          // 4. Detección de Modos de Sala (Room Modes)
+          // Resaltar frecuencias con decaimiento persistente
+          if (val > 150 && (peakArray.current[i] - val) < 3) {
+              ctx.fillStyle = 'rgba(57, 255, 20, 0.08)';
+              ctx.fillRect(i * barWidth, 0, barWidth, height - 40);
+          }
+
+          if (val > frameMaxVal && freq > 40) {
+              frameMaxVal = val;
+              frameMaxFreq = freq;
+          }
+      }
+
+      // High-Res Peak Detection (Inspiración RTA HD)
+      let absoluteMaxVal = -1;
+      let absoluteMaxIdx = -1;
+      for (let i = 0; i < dataArray.current.length; i++) {
+          if (dataArray.current[i] > absoluteMaxVal) {
+              absoluteMaxVal = dataArray.current[i];
+              absoluteMaxIdx = i;
+          }
+      }
+
+      if (absoluteMaxVal > 60) {
+          const highResFreq = (absoluteMaxIdx * sampleRate) / analyser.current.fftSize;
+          if (highResFreq > 50) { // Smart filter: Ignorar ruido mecánico
+              frameCounterRef.current++;
+              if (frameCounterRef.current % 15 === 0) { // Estabilización (4 updates/seg)
+                  setPeakFreq(Math.round(highResFreq));
+              }
+              frameMaxFreq = highResFreq; // Para luz de armónicos
+          }
+      }
+
+      // 5. Análisis de Armónicos (Harmonic Light)
+      if (absoluteMaxVal > 100 && frameMaxFreq > 50) {
+          // Dibujar líneas de armónicos (2f, 3f, 4f)
+          ctx.lineWidth = 0.5;
+          for (let h = 2; h <= 4; h++) {
+              const hFreq = frameMaxFreq * h;
+              const hX = (hFreq / (sampleRate / 2)) * width;
+              if (hX < width) {
+                  ctx.strokeStyle = `rgba(6, 182, 212, ${0.4 / h})`;
+                  ctx.setLineDash([4, 4]);
+                  ctx.beginPath(); ctx.moveTo(hX, 0); ctx.lineTo(hX, height - 40); ctx.stroke();
+                  ctx.setLineDash([]);
+              }
+          }
+      }
+
+      // X-Axis Logarithmic Labels
+      ctx.font = '800 8px Inter';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      [20, 100, 1000, 5000, 20000].forEach(f => {
+          const x = (Math.log10(f/20) / Math.log10(20000/20)) * width;
+          ctx.fillText(f >= 1000 ? `${f/1000}k` : f, x, height - 12);
+      });
+
+      // --- INTERACTIVE HUD ---
+      if (hoverRef.current.active) {
+          const hX = hoverRef.current.x;
+          const hFreq = Math.round((hX / width) * (sampleRate / 2));
+          ctx.strokeStyle = '#39FF14';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(hX, 0); ctx.lineTo(hX, height - 30); ctx.stroke();
+          
+          const hVal = dataArray.current[Math.floor((hX / width) * 128)];
+          ctx.shadowBlur = 12; ctx.shadowColor = '#39FF14';
+          ctx.beginPath(); ctx.arc(hX, height - (Math.pow(hVal/255, 1.4)*(height-80)) - 40, 4, 0, Math.PI*2);
+          ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.shadowBlur = 0;
+
+          // Tooltip
+          ctx.fillStyle = 'rgba(3, 3, 3, 0.95)';
+          ctx.strokeStyle = '#39FF14';
+          ctx.lineWidth = 1.5;
+          const toolText = `${hFreq}Hz | -${(100 - (hVal/2.5)).toFixed(1)}dB`;
+          ctx.font = '900 14px "JetBrains Mono"';
+          const metrics = ctx.measureText(toolText);
+          ctx.beginPath();
+          ctx.roundRect(hX + 15, 40, metrics.width + 20, 34, 6);
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#39FF14';
+          ctx.fillText(toolText, hX + 25, 62);
+      }
+
+      ctx.restore();
+
+      // 1. Waterfall Render (Topografía Sónica 3D)
+      const wWidth = wCanvas.width;
+      const wHeight = wCanvas.height;
+      wCtx.drawImage(wCanvas, 0, 0, wWidth, wHeight - 1, 0, 1, wWidth, wHeight - 1);
+      const row = wCtx.createImageData(wWidth, 1);
+      for (let i = 0; i < wWidth; i++) {
+          const val = dataArray.current[Math.floor((i / wWidth) * 128)];
+          const idx = i * 4;
+          // Color Topografía: Del azul/púrpura al verde neón intenso
+          row.data[idx] = val * 0.1; 
+          row.data[idx+1] = val;     
+          row.data[idx+2] = 255 - val; 
+          row.data[idx+3] = 255;
+      }
+      wCtx.putImageData(row, 0, 0);
+
+      animationRef.current = requestAnimationFrame(loop);
     }
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d', { alpha: false });
-    const wCanvas = waterfallCanvasRef.current;
-    const wCtx = wCanvas.getContext('2d', { alpha: false });
-    const dpr = window.devicePixelRatio || 1;
-    const width = canvas.width / dpr;
-    const height = canvas.height / dpr;
-
-    analyser.current.getByteFrequencyData(dataArray.current);
-    
-    // --- NOIR-TECH CANVAS STYLING ---
-    ctx.fillStyle = '#030303';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.scale(dpr, dpr);
-
-    // 1. Grid Milimétrica
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
-    for (let y = 0; y < height; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
-
-    const barCount = 128;
-    const barWidth = width / barCount;
-    const sampleRate = audioCtx.current.sampleRate;
-    let frameMaxVal = -1;
-    let frameMaxFreq = 0;
-
-    for (let i = 0; i < barCount; i++) {
-        const freq = (i / barCount) * (sampleRate / 2);
-        let valRaw = dataArray.current[i];
-        
-        // 3. Compensación NRC (Noise/Response Compensation)
-        // Aplanamos la curva del micro móvil: Boost sutil en extremos
-        const nrcLow = freq < 150 ? (150 - freq) / 8 : 0;
-        const nrcHigh = freq > 10000 ? (freq - 10000) / 800 : 0;
-        let val = Math.min(255, valRaw + nrcLow + nrcHigh);
-        
-        const barHeight = Math.pow(val / 255, 1.4) * (height - 80);
-        
-        // Dynamic HSLA (Noir-Tech transition)
-        const hue = 240 - (i / barCount) * 120; // Cyan to Blue
-        ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
-        ctx.fillRect(i * barWidth, height - barHeight - 40, barWidth - 1, barHeight);
-
-        // Peak Hold Rendering
-        if (val > peakArray.current[i]) peakArray.current[i] = val;
-        else peakArray.current[i] -= 0.8; // Decaimiento suave REW
-        
-        const pH = Math.pow(peakArray.current[i] / 255, 1.4) * (height - 80);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillRect(i * barWidth, height - pH - 42, barWidth - 1, 1.5);
-
-        // 4. Detección de Modos de Sala (Room Modes)
-        // Resaltar frecuencias con decaimiento persistente
-        if (val > 150 && (peakArray.current[i] - val) < 3) {
-            ctx.fillStyle = 'rgba(57, 255, 20, 0.08)';
-            ctx.fillRect(i * barWidth, 0, barWidth, height - 40);
-        }
-
-        if (val > frameMaxVal && freq > 40) {
-            frameMaxVal = val;
-            frameMaxFreq = freq;
-        }
-    }
-
-    // High-Res Peak Detection (Inspiración RTA HD)
-    let absoluteMaxVal = -1;
-    let absoluteMaxIdx = -1;
-    for (let i = 0; i < dataArray.current.length; i++) {
-        if (dataArray.current[i] > absoluteMaxVal) {
-            absoluteMaxVal = dataArray.current[i];
-            absoluteMaxIdx = i;
-        }
-    }
-
-    if (absoluteMaxVal > 60) {
-        const highResFreq = (absoluteMaxIdx * sampleRate) / analyser.current.fftSize;
-        if (highResFreq > 50) { // Smart filter: Ignorar ruido mecánico
-            frameCounterRef.current++;
-            if (frameCounterRef.current % 15 === 0) { // Estabilización (4 updates/seg)
-                setPeakFreq(Math.round(highResFreq));
-            }
-            frameMaxFreq = highResFreq; // Para luz de armónicos
-        }
-    }
-
-    // 5. Análisis de Armónicos (Harmonic Light)
-    if (absoluteMaxVal > 100 && frameMaxFreq > 50) {
-        // Dibujar líneas de armónicos (2f, 3f, 4f)
-        ctx.lineWidth = 0.5;
-        for (let h = 2; h <= 4; h++) {
-            const hFreq = frameMaxFreq * h;
-            const hX = (hFreq / (sampleRate / 2)) * width;
-            if (hX < width) {
-                ctx.strokeStyle = `rgba(6, 182, 212, ${0.4 / h})`;
-                ctx.setLineDash([4, 4]);
-                ctx.beginPath(); ctx.moveTo(hX, 0); ctx.lineTo(hX, height - 40); ctx.stroke();
-                ctx.setLineDash([]);
-            }
-        }
-    }
-
-    // X-Axis Logarithmic Labels
-    ctx.font = '800 8px Inter';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    [20, 100, 1000, 5000, 20000].forEach(f => {
-        const x = (Math.log10(f/20) / Math.log10(20000/20)) * width;
-        ctx.fillText(f >= 1000 ? `${f/1000}k` : f, x, height - 12);
-    });
-
-    // --- INTERACTIVE HUD ---
-    if (hoverRef.current.active) {
-        const hX = hoverRef.current.x;
-        const hFreq = Math.round((hX / width) * (sampleRate / 2));
-        ctx.strokeStyle = '#39FF14';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(hX, 0); ctx.lineTo(hX, height - 30); ctx.stroke();
-        
-        const hVal = dataArray.current[Math.floor((hX / width) * 128)];
-        ctx.shadowBlur = 12; ctx.shadowColor = '#39FF14';
-        ctx.beginPath(); ctx.arc(hX, height - (Math.pow(hVal/255, 1.4)*(height-80)) - 40, 4, 0, Math.PI*2);
-        ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.shadowBlur = 0;
-
-        // Tooltip
-        ctx.fillStyle = 'rgba(3, 3, 3, 0.95)';
-        ctx.strokeStyle = '#39FF14';
-        ctx.lineWidth = 1.5;
-        const toolText = `${hFreq}Hz | -${(100 - (hVal/2.5)).toFixed(1)}dB`;
-        ctx.font = '900 14px "JetBrains Mono"';
-        const metrics = ctx.measureText(toolText);
-        ctx.beginPath();
-        ctx.roundRect(hX + 15, 40, metrics.width + 20, 34, 6);
-        ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#39FF14';
-        ctx.fillText(toolText, hX + 25, 62);
-    }
-
-    ctx.restore();
-
-    // 1. Waterfall Render (Topografía Sónica 3D)
-    const wWidth = wCanvas.width;
-    const wHeight = wCanvas.height;
-    wCtx.drawImage(wCanvas, 0, 0, wWidth, wHeight - 1, 0, 1, wWidth, wHeight - 1);
-    const row = wCtx.createImageData(wWidth, 1);
-    for (let i = 0; i < wWidth; i++) {
-        const val = dataArray.current[Math.floor((i / wWidth) * 128)];
-        const idx = i * 4;
-        // Color Topografía: Del azul/púrpura al verde neón intenso
-        row.data[idx] = val * 0.1; 
-        row.data[idx+1] = val;     
-        row.data[idx+2] = 255 - val; 
-        row.data[idx+3] = 255;
-    }
-    wCtx.putImageData(row, 0, 0);
-
-    animationRef.current = requestAnimationFrame(draw);
+    loop();
   }, [isFrozen]);
 
   const startEngine = async () => {
