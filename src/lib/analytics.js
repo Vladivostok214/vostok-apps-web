@@ -1,30 +1,40 @@
-import { createClient } from '@supabase/supabase-js';
 import posthog from 'posthog-js';
+import { createClient } from '@supabase/supabase-js';
 
-// --- CONFIGURACIÓN DE SUPABASE (Mensajes y Datos) ---
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || 'phc_placeholder';
+const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://us.posthog.com';
 
-export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
-  : null;
-
-// --- CONFIGURACIÓN DE POSTHOG (Analíticas de Usuario) ---
 export const initAnalytics = () => {
-  const token = import.meta.env.VITE_POSTHOG_KEY;
-  if (token) {
-    posthog.init(token, {
-      api_host: 'https://app.posthog.com',
-      autocapture: true, // Captura clics automáticamente
-      capture_pageview: true,
+  if (typeof window !== 'undefined') {
+    posthog.init(POSTHOG_KEY, {
+      api_host: POSTHOG_HOST,
+      ui_host: 'https://us.posthog.com',
+      persistence: 'memory', // Zero-Footprint, memory only
+      disable_session_recording: true,
+      autocapture: false, // Ensure no sensitive data is captured automatically
+      capture_pageview: false,
+      capture_pageleave: false,
+      disable_cookie: true, // No cookies
     });
   }
 };
 
-export const trackEvent = (name, properties = {}) => {
-  if (import.meta.env.PROD) {
-    posthog.capture(name, properties);
-  } else {
-    console.log(`[Analytics Event]: ${name}`, properties);
-  }
+export const captureVostokHardware = (audioContext) => {
+  if (!audioContext || typeof window === 'undefined') return;
+
+  const isMobile = /iphone|ipad|ipod|android/.test(window.navigator.userAgent.toLowerCase());
+
+  posthog.capture('hardware_spec', {
+    sample_rate: audioContext.sampleRate,
+    base_latency: audioContext.baseLatency || 0,
+    is_mobile: isMobile
+  });
 };
+
+export const trackEvent = (eventName, properties) => {
+  posthog.capture(eventName, properties);
+};
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;

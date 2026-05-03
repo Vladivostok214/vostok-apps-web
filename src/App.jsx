@@ -7,86 +7,9 @@ import {
 import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
+import Footer from './components/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
-
-// --- COMPONENTES DE BACKEND ---
-function ExperimentationBox() {
-  const [message, setMessage] = useState('');
-  const [status, setStatus] = useState('idle'); // 'idle' | 'sending' | 'success' | 'error'
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!message.trim() || !supabase) return;
-
-    setStatus('sending');
-    const { error } = await supabase
-      .from('messages')
-      .insert([{ content: message, created_at: new Date() }]);
-
-    if (error) {
-      console.error(error);
-      setStatus('error');
-      setTimeout(() => setStatus('idle'), 3000);
-    } else {
-      trackEvent('message_sent', { length: message.length });
-      setStatus('success');
-      setMessage('');
-      setTimeout(() => setStatus('idle'), 5000);
-    }
-  };
-
-  if (!supabase) {
-    return (
-      <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]" style={{ WebkitBackdropFilter: 'blur(10px)' }}>
-        <div className="flex items-center gap-4 mb-6">
-          <BellRing className="w-6 h-6 text-[#39FF14]/70" />
-          <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90 font-bold">Buzón de Experimentación</h4>
-        </div>
-        <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10">Configura VITE_SUPABASE_URL y KEY para activar el buzón.</p>
-        <div className="h-14 flex items-center justify-center border border-white/5 rounded-full bg-white/[0.03]">
-          <span className="text-[9px] font-black text-slate-800 uppercase tracking-[0.4em] font-bold">CONEXIÓN REQUERIDA</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-10 border border-white/10 rounded-[3rem] bg-gradient-to-br from-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_50px_rgba(57,255,20,0.02)]" style={{ WebkitBackdropFilter: 'blur(10px)' }}>
-      <div className="flex items-center gap-4 mb-6">
-        <BellRing className={`w-6 h-6 ${status === 'success' ? 'text-[#39FF14]' : 'text-[#39FF14]/70'}`} />
-        <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14]/90 font-bold">Buzón de Experimentación</h4>
-      </div>
-      
-      {status === 'success' ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-40 flex flex-col items-center justify-center text-center">
-          <Check className="w-10 h-10 text-[#39FF14] mb-4" />
-          <p className="text-sm font-bold text-slate-300">Observación recibida. Gracias por contribuir al laboratorio.</p>
-        </motion.div>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <p className="text-slate-500 text-xs font-bold leading-relaxed mb-2 uppercase">"Envíenos sus observaciones acústicas. Nuestra comunidad construye el futuro del audio."</p>
-          <textarea 
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Escribe tu mensaje..."
-            className="w-full h-24 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-[#39FF14]/40 transition-colors resize-none"
-          />
-          <button 
-            type="submit"
-            disabled={status === 'sending' || !message.trim()}
-            className="h-14 flex items-center justify-center gap-3 border border-[#39FF14]/20 rounded-full bg-[#39FF14]/5 hover:bg-[#39FF14]/10 transition-all group disabled:opacity-50"
-          >
-            <span className="text-[9px] font-black text-[#39FF14] uppercase tracking-[0.4em] font-bold">
-              {status === 'sending' ? 'ENVIANDO...' : 'ENVIAR REPORTE'}
-            </span>
-            <Send className="w-4 h-4 text-[#39FF14] group-hover:translate-x-1 transition-transform" />
-          </button>
-        </form>
-      )}
-    </div>
-  );
-}
 
 // --- OPTIMIZACIÓN DE PROCESAMIENTO ---
 // Pre-asignamos memoria para evitar Garbage Collection en el loop de audio
@@ -284,12 +207,6 @@ const TuningForkIcon = ({ className, strokeColor = "currentColor" }) => (
     <path d="M8 14V4" />
     <path d="M16 14V4" />
     <path d="M8 14c0 2.2 1.8 4 4 4s4-1.8 4-4" />
-  </svg>
-);
-
-const RedditIcon = ({ className }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-10.056 1.597.04.21.06.422.06.637 0 2.73-3.385 4.943-7.56 4.943-4.175 0-7.56-2.213-7.56-4.943 0-.213.02-.424.062-.643a1.756 1.756 0 0 1-1.054-1.59c0-.968.786-1.754 1.754-1.754.463 0 .875.18 1.179.475 1.187-.85 2.812-1.415 4.606-1.498l.906-4.239a.44.44 0 0 1 .52-.339l2.815.594c.03-.265.249-.471.52-.471zm-7.39 8.59c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1 1.1-.49 1.1-1.1-.49-1.1-1.1-1.1zm4.76 0c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1 1.1-.49 1.1-1.1-.49-1.1-1.1-1.1zm-3.154 3.386c-.118 0-.213.096-.213.214 0 .43.348.78.777.78s.777-.35.777-.78a.214.214 0 0 0-.213-.214h-1.128z" />
   </svg>
 );
 
@@ -670,7 +587,7 @@ function SoundScienceSection() {
         </h2>
       </div>
 
-      <div className="relative w-full max-w-xl z-10 perspective-1000">
+      <div className="relative w-full max-w-xl z-10 perspective-1000 mx-auto">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={current.id}
@@ -679,9 +596,13 @@ function SoundScienceSection() {
             exit={{ opacity: 0, x: -direction * 50, rotateY: -direction * 10 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             onClick={nextCard}
-            className="cursor-pointer group relative"
+            className="cursor-pointer group relative z-10"
           >
-            <div className="relative bg-neutral-900/40 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 shadow-2xl overflow-hidden transition-all duration-500 group-hover:border-cyan-500/30">
+            {/* Tarjetas de fondo integradas en la animación para que se muevan con la tarjeta activa */}
+            <div className="absolute top-0 left-0 w-full h-full bg-[#080808] border border-white/5 rounded-[2.5rem] transform translate-y-4 scale-[0.95] -z-10 transition-transform duration-500 group-hover:translate-y-5 group-hover:scale-[0.94]" />
+            <div className="absolute top-0 left-0 w-full h-full bg-[#050505] border border-white/5 rounded-[2.5rem] transform translate-y-8 scale-[0.90] -z-20 transition-transform duration-500 group-hover:translate-y-10 group-hover:scale-[0.88]" />
+
+            <div className="relative z-20 bg-[#0A0A0A] border border-white/5 rounded-[2.5rem] p-8 md:p-12 shadow-2xl overflow-hidden transition-all duration-500 group-hover:border-cyan-500/30">
               
               {/* Icono gráfico en el fondo */}
               <div className="absolute right-[-40px] top-[-40px] w-64 h-64 pointer-events-none opacity-20 md:opacity-30 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-6">
@@ -797,7 +718,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden grid-bg">
+    <div className="min-h-screen bg-[#010101] crt-scanlines text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden grid-bg">
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
       {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
       {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}
@@ -990,36 +911,7 @@ export default function App() {
         </div>
       </section>
 
-      <footer id="contacto" className="py-24 px-8 bg-black border-t border-white/5 z-10 safe-pb">
-        <div className="max-w-7xl mx-auto flex flex-col items-center gap-16">
-          <div className="grid md:grid-cols-2 gap-16 w-full">
-            <div className="flex flex-col items-center md:items-start gap-8">
-              <div className="flex items-center gap-4">
-                <VostokLogo className="w-12 h-12" />
-                <span className="text-3xl tracking-tight uppercase tracking-widest flex items-center">
-                  <span className="font-black">Vostok</span>
-                  <span className="font-light opacity-60">Labs</span>
-                </span>
-              </div>
-              <p className="text-slate-700 text-[10px] font-black uppercase tracking-[0.4em] mt-2 font-bold">LABORATORIO DE ACÚSTICA APLICADA © 2026</p>
-              
-              <a 
-                href="https://www.reddit.com/r/VostokLabs/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 px-6 py-3 bg-[#FF4500]/10 border border-[#FF4500]/20 rounded-full hover:bg-[#FF4500]/20 transition-all group shadow-lg active:scale-95"
-              >
-                <RedditIcon className="w-5 h-5 text-[#FF4500]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white font-bold">r/VostokLabs</span>
-              </a>
-            </div>
-            
-            <div className="relative">
-              <ExperimentationBox />
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
