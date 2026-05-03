@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
   Smartphone, LayoutGrid, Plus, Minus, BellRing, ArrowLeft, 
-  Music, Headphones, Zap, Send, ChevronDown, Volume2
+  Music, Zap, Send, ChevronDown, Volume2
 } from 'lucide-react';
 import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
@@ -175,19 +175,14 @@ const useWakeLock = () => {
 
 const usePWAInstall = () => {
   const [installPrompt, setInstallPrompt] = useState(null);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+    return false;
+  });
 
   useEffect(() => {
-    // Detectar si ya está instalada
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-      setIsInstalled(true);
-    }
-
-    // Detectar iOS
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
-
     const handler = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -204,7 +199,7 @@ const usePWAInstall = () => {
   };
 
   // Forzamos visibilidad en móvil si no está instalada, para que siempre haya un camino a la descarga
-  const isMobileBrowser = /iphone|ipad|ipod|android/.test(window.navigator.userAgent.toLowerCase());
+  const isMobileBrowser = typeof window !== 'undefined' && /iphone|ipad|ipod|android/.test(window.navigator.userAgent.toLowerCase());
   const canShowMobile = !isInstalled && isMobileBrowser;
   
   return { canInstall: !!installPrompt, canShowMobile, installApp, isInstalled };
@@ -269,9 +264,18 @@ function VostokTuner({ onBack }) {
   const fileInputRef = useRef(null);
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
 
+  const stopListening = useCallback(() => {
+    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+    if (mediaStreamSourceRef.current) mediaStreamSourceRef.current.mediaStream.getTracks().forEach(t => t.stop());
+    if (audioContextRef.current) audioContextRef.current.close();
+    setIsListening(false);
+    setPitch(null);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
+
   useEffect(() => {
     return () => stopListening();
-  }, []);
+  }, [stopListening]);
 
   // Haptic feedback cuando está afinado
   useEffect(() => {
@@ -310,15 +314,6 @@ function VostokTuner({ onBack }) {
       console.error(e);
       alert("Se requiere acceso al micrófono para el afinador.");
     }
-  };
-
-  const stopListening = () => {
-    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
-    if (mediaStreamSourceRef.current) mediaStreamSourceRef.current.mediaStream.getTracks().forEach(t => t.stop());
-    if (audioContextRef.current) audioContextRef.current.close();
-    setIsListening(false);
-    setPitch(null);
-    releaseWakeLock();
   };
 
   const updateLoop = () => {
@@ -587,7 +582,8 @@ export default function App() {
   const [view, setView] = useState('home');
   const [copied, setCopied] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
-  const { canInstall, canShowMobile, installApp, isInstalled, isIOS } = usePWAInstall();
+  const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
+  const isIOS = typeof window !== 'undefined' && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
 
   useEffect(() => {
     initAnalytics();

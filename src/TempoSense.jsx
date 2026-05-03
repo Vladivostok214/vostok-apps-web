@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowLeft, Zap, Music, Play, Square, Target } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowLeft, Zap, Play, Square, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from './lib/analytics';
 
@@ -10,31 +10,42 @@ export default function TempoSense({ onBack }) {
   const [isMetronomeActive, setIsMetronomeActive] = useState(false);
   const [tapTimes, setTapTimes] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [visualPulse, setVisualPulse] = useState(false);
+
   const audioContext = useRef(null);
   const analyserRef = useRef(null);
   const nextNoteTime = useRef(0);
   const timerID = useRef(null);
 
   const playClick = useCallback(() => {
+    if (!audioContext.current) return;
     const osc = audioContext.current.createOscillator();
     const gain = audioContext.current.createGain();
     osc.connect(gain);
     gain.connect(audioContext.current.destination);
-    
+
     osc.frequency.value = 1000;
     gain.gain.setValueAtTime(0.5, audioContext.current.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.1);
-    
+
     osc.start();
     osc.stop(audioContext.current.currentTime + 0.1);
+
+    // Visual Pulse
+    setVisualPulse(true);
+    setTimeout(() => setVisualPulse(false), 100);
   }, []);
 
   const scheduler = useCallback(() => {
-    while (nextNoteTime.current < audioContext.current.currentTime + 0.1) {
-      playClick();
-      nextNoteTime.current += 60.0 / bpm;
+    function loop() {
+      if (!audioContext.current) return;
+      while (nextNoteTime.current < audioContext.current.currentTime + 0.1) {
+        playClick();
+        nextNoteTime.current += 60.0 / bpm;
+      }
+      timerID.current = requestAnimationFrame(loop);
     }
-    timerID.current = requestAnimationFrame(scheduler);
+    loop();
   }, [bpm, playClick]);
 
   useEffect(() => {
@@ -48,38 +59,42 @@ export default function TempoSense({ onBack }) {
     return () => cancelAnimationFrame(timerID.current);
   }, [isMetronomeActive, bpm, scheduler]);
 
-  const startAnalysis = async () => {
-    setIsAnalyzing(true);
+  const startAnalysis = useCallback(async () => {
     setKey(null);
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setIsAnalyzing(true);
       audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContext.current.createAnalyser();
-      analyserRef.current.fftSize = 8192;
+      analyserRef.current.fftSize = 4096;
       const source = audioContext.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       
       const bufferLength = analyserRef.current.frequencyBinCount;
       const freqData = new Float32Array(bufferLength);
-      const chroma = new Array(12).fill(0);
+      const chroma = new Float32Array(12);
       
-      const interval = setInterval(() => {
+      const analyzeFrame = () => {
+        if (mode !== 'analyze') {
+            stream.getTracks().forEach(t => t.stop());
+            setIsAnalyzing(false);
+            return;
+        }
+
         analyserRef.current.getFloatFrequencyData(freqData);
+        chroma.fill(0);
+
         for (let i = 0; i < bufferLength; i++) {
           const freq = i * audioContext.current.sampleRate / analyserRef.current.fftSize;
-          if (freq > 60 && freq < 1000) {
+          if (freq > 60 && freq < 2000) {
+            const mag = Math.pow(10, freqData[i] / 20);
             const noteIndex = Math.round(12 * Math.log2(freq / 440) + 69) % 12;
-            chroma[noteIndex] += Math.pow(10, freqData[i] / 20);
+            chroma[noteIndex] += mag;
           }
         }
-      }, 100);
 
-      setTimeout(() => {
-        clearInterval(interval);
-        stream.getTracks().forEach(t => t.stop());
-        
-        // Plantillas de escalas (Major/Minor)
+        // Real-time Key Matching
         const scales = {
           "Maj": [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
           "Min": [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0]
@@ -89,16 +104,11 @@ export default function TempoSense({ onBack }) {
         let bestKey = "";
         let maxCorrelation = -1;
 
-        // Correlación de Pearson entre Chroma detectado y cada escala posible
         for (let root = 0; root < 12; root++) {
           for (let type in scales) {
             let correlation = 0;
             for (let i = 0; i < 12; i++) {
-              if (scales[type][i] === 1) {
-                correlation += chroma[(root + i) % 12];
-              } else {
-                correlation -= chroma[(root + i) % 12] * 0.5; // Penalización por notas fuera de escala
-              }
+              correlation += chroma[(root + i) % 12] * (scales[type][i] ? 1 : -0.5);
             }
             if (correlation > maxCorrelation) {
               maxCorrelation = correlation;
@@ -107,21 +117,29 @@ export default function TempoSense({ onBack }) {
           }
         }
         
-        setKey(bestKey);
-        setIsAnalyzing(false);
-      }, 10000);
+        if (maxCorrelation > 0.1) setKey(bestKey);
+        timerID.current = requestAnimationFrame(analyzeFrame);
+      };
+
+      analyzeFrame();
     } catch (e) {
       console.error(e);
-      alert("Error al acceder al micrófono.");
       setIsAnalyzing(false);
     }
-  };
+  }, [mode]);
 
+  useEffect(() => {
+    if (mode === 'analyze') {
+        queueMicrotask(() => startAnalysis());
+    } else {
+        queueMicrotask(() => setIsAnalyzing(false));
+    }
+  }, [mode, startAnalysis]);
   const handleTap = () => {
     const now = Date.now();
     let newTapTimes = tapTimes.filter(t => now - t < 2000);
     newTapTimes.push(now);
-    
+
     if (newTapTimes.length > 2) {
       const diffs = [];
       for (let i = 1; i < newTapTimes.length; i++) diffs.push(newTapTimes[i] - newTapTimes[i-1]);
@@ -141,38 +159,61 @@ export default function TempoSense({ onBack }) {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center gap-10">
-        <div className="text-center">
-            {mode === 'tap' ? (
-                <div className="text-8xl font-black tabular-nums tracking-tighter">
-                    {bpm}<span className="text-2xl text-slate-500 font-light ml-2">BPM</span>
-                </div>
-            ) : (
-                <div className="text-6xl font-black tracking-tighter text-[#39FF14]">
-                    {key || 'ESCUCHANDO'}
-                </div>
-            )}
+        <div className="text-center relative">
+            <AnimatePresence mode="wait">
+                <motion.div 
+                    key={mode === 'tap' ? bpm : key}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.1 }}
+                    className="relative z-10"
+                >
+                    {mode === 'tap' ? (
+                        <div className="text-8xl font-black tabular-nums tracking-tighter">
+                            {bpm}<span className="text-2xl text-slate-500 font-light ml-2">BPM</span>
+                        </div>
+                    ) : (
+                        <div className="text-7xl font-black tracking-tighter text-[#39FF14] drop-shadow-[0_0_30px_rgba(57,255,20,0.3)]">
+                            {key || 'ESCUCHANDO'}
+                        </div>
+                    )}
+                </motion.div>
+            </AnimatePresence>
+
+            {/* Visual Metronome Pulse */}
+            <motion.div 
+                animate={{ scale: visualPulse ? 1.5 : 1, opacity: visualPulse ? 0.3 : 0 }}
+                className="absolute inset-0 bg-[#39FF14] rounded-full blur-3xl pointer-events-none"
+            />
         </div>
 
         <div className="flex gap-4 p-2 bg-white/5 rounded-full border border-white/10">
           <button onClick={() => setMode('tap')} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'tap' ? 'bg-[#39FF14] text-black' : 'text-slate-500'}`}>Tap Tempo</button>
-          <button onClick={() => { setMode('analyze'); startAnalysis(); }} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'analyze' ? 'bg-[#39FF14] text-black' : 'text-slate-500'}`}>Escucha</button>
+          <button onClick={() => setMode('analyze')} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'analyze' ? 'bg-[#39FF14] text-black' : 'text-slate-500'}`}>Real-time Key</button>
         </div>
 
         {mode === 'tap' ? (
           <div className="flex flex-col gap-6 w-full max-w-xs">
-            <button onPointerDown={handleTap} className="w-full py-20 bg-white/5 border border-white/10 rounded-[3rem] active:scale-95 transition-all text-center flex flex-col items-center gap-4">
+            <button onPointerDown={handleTap} className="w-full py-20 bg-white/5 border border-white/10 rounded-[3rem] active:scale-95 transition-all text-center flex flex-col items-center gap-4 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-[#39FF14]/5 opacity-0 group-active:opacity-100 transition-opacity" />
               <Target className="w-12 h-12 text-[#39FF14]" />
               <span className="font-black tracking-widest uppercase">Tap Aquí</span>
             </button>
-            <button onClick={() => setIsMetronomeActive(!isMetronomeActive)} className={`w-full py-4 rounded-full flex items-center justify-center gap-2 font-black uppercase tracking-widest ${isMetronomeActive ? 'bg-red-500/20 text-red-500' : 'bg-[#39FF14]/10 text-[#39FF14]'}`}>
+            <button onClick={() => setIsMetronomeActive(!isMetronomeActive)} className={`w-full py-4 rounded-full flex items-center justify-center gap-2 font-black uppercase tracking-widest transition-all active:scale-95 ${isMetronomeActive ? 'bg-red-500/20 text-red-500 border border-red-500/20' : 'bg-[#39FF14]/10 text-[#39FF14] border border-[#39FF14]/20'}`}>
               {isMetronomeActive ? <><Square className="w-4 h-4" /> Detener Metrónomo</> : <><Play className="w-4 h-4" /> Iniciar Metrónomo</>}
             </button>
           </div>
         ) : (
-          <div className="w-full max-w-xs p-10 bg-white/5 border border-white/10 rounded-[3rem] text-center">
-            <Zap className={`w-12 h-12 mx-auto mb-6 ${isAnalyzing ? 'text-cyan-400 animate-pulse' : 'text-slate-600'}`} />
-            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">
-              {isAnalyzing ? "Escuchando ambiente..." : "Listo para Escuchar"}
+          <div className="w-full max-w-xs p-10 bg-white/5 border border-white/10 rounded-[3rem] text-center relative overflow-hidden">
+            <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 opacity-5 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(circle, #06b6d4 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+            />
+            <Zap className={`w-12 h-12 mx-auto mb-6 relative z-10 ${isAnalyzing ? 'text-cyan-400 animate-pulse' : 'text-slate-600'}`} />
+            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest relative z-10">
+              {isAnalyzing ? "Analizando Armónicos..." : "Iniciando Motor..."}
             </p>
           </div>
         )}

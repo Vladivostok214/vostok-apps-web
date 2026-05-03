@@ -1,74 +1,170 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Volume2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function SPLMeter({ onBack }) {
-  const [db, setDb] = useState(20); // Piso de 20dB
-  const [cumulativeRisk, setCumulativeRisk] = useState(0); // Exposición acumulada simulada
+  const [db, setDb] = useState(20);
+  const [cumulativeRisk, setCumulativeRisk] = useState(0);
+  const [visualDb, setVisualDb] = useState(20);
   const audioContext = useRef(null);
+  const analyserRef = useRef(null);
 
+  // Filtro de Ponderación A (A-weighting approximation)
+  const getAWeighting = (freq) => {
+    const f2 = freq * freq;
+    const f4 = f2 * f2;
+    const r1 = 12194 * 12194 * f4;
+    const r2 = (f2 + 20.6 * 20.6) * Math.sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194 * 12194);
+    const ra = r1 / r2;
+    return 2.0 + 20 * Math.log10(ra);
+  };
+
+  const update = useCallback(() => {
+    function loop() {
+      if (!analyserRef.current) return;
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(dataArray);
+
+      let sum = 0;
+      const bufferLength = dataArray.length;
+      const sampleRate = audioContext.current.sampleRate;
+      const fftSize = analyserRef.current.fftSize;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const freq = (i * sampleRate) / fftSize;
+        const weight = getAWeighting(freq);
+        const intensity = Math.pow(10, (dataArray[i] + weight) / 20);
+        sum += intensity * intensity;
+      }
+
+      const rms = Math.sqrt(sum / bufferLength);
+      const instantDb = Math.max(20, Math.round(20 * Math.log10(rms + 1) + 15));
+
+      setDb(instantDb);
+
+      if (instantDb > 85) {
+        setCumulativeRisk(prev => Math.min(100, prev + (instantDb - 85) * 0.005));
+      }
+
+      requestAnimationFrame(loop);
+    }
+    loop();
+  }, []);
   useEffect(() => {
-    let stream, analyser, dataArray;
     const initAudio = async () => {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
-      analyser = audioContext.current.createAnalyser();
-      const source = audioContext.current.createMediaStreamSource(stream);
-      source.connect(analyser);
-      analyser.fftSize = 256;
-      dataArray = new Uint8Array(analyser.frequencyBinCount);
-      
-      const update = () => {
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-        const average = sum / dataArray.length;
-        
-        // Sensibilidad mejorada: mapeo logarítmico calibrado
-        const instantDb = Math.max(20, Math.round(20 * Math.log10(average + 1) + 20));
-        setDb(instantDb);
-        
-        // Riesgo acumulado: simple integral de tiempo sobre 85dB
-        if (instantDb > 85) {
-          setCumulativeRisk(prev => Math.min(100, prev + (instantDb - 85) * 0.05));
-        }
-        
-        requestAnimationFrame(update);
-      };
-      update();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
+        analyserRef.current = audioContext.current.createAnalyser();
+        const source = audioContext.current.createMediaStreamSource(stream);
+        source.connect(analyserRef.current);
+        analyserRef.current.fftSize = 512;
+        update();
+      } catch (e) {
+        console.error(e);
+      }
     };
     initAudio();
     return () => { if (audioContext.current) audioContext.current.close(); };
-  }, []);
+  }, [update]);
+
+  // Suavizado de la aguja visual
+  useEffect(() => {
+    let animId;
+    const animate = () => {
+      setVisualDb(prev => {
+        const diff = db - prev;
+        return prev + diff * 0.15;
+      });
+      animId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animId);
+  }, [db]);
 
   const getStatus = (val) => {
-    if (val < 60) return { color: '#39FF14', msg: 'Nivel Seguro: Ambiente normal' };
-    if (val < 85) return { color: '#fbbf24', msg: 'Precaución: Exposición prolongada limitada' };
-    return { color: '#ef4444', msg: 'Peligro: Riesgo auditivo detectado' };
+    if (val < 60) return { color: '#39FF14', msg: 'Nivel Seguro', shadow: 'rgba(57,255,20,0.4)' };
+    if (val < 85) return { color: '#fbbf24', msg: 'Precaución', shadow: 'rgba(251,191,36,0.4)' };
+    return { color: '#ef4444', msg: 'Peligro Crítico', shadow: 'rgba(239,68,68,0.4)' };
   };
 
   const status = getStatus(db);
+  const angle = ((visualDb - 20) / (120 - 20)) * 180 - 90;
 
   return (
-    <div className="fixed inset-0 bg-[#050505] z-[100] p-8 pt-[max(2rem,env(safe-area-inset-top))] flex flex-col">
-      <header className="flex justify-between items-center mb-12">
-        <button onClick={onBack} className="p-3 bg-white/5 rounded-2xl border border-white/10"><ArrowLeft className="w-5 h-5" /></button>
-        <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#39FF14]">SPL Meter</h2>
+    <div className="fixed inset-0 bg-[#050505] z-[100] p-8 pt-[max(2rem,env(safe-area-inset-top))] flex flex-col font-sans text-white">
+      <header className="flex justify-between items-center mb-8">
+        <button onClick={onBack} className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all"><ArrowLeft className="w-5 h-5" /></button>
+        <div className="text-center">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14] mb-1">A-Weighted SPL</h2>
+            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Analog Reference / 20Hz-20kHz</div>
+        </div>
         <div className="w-11" />
       </header>
-      
-      <div className="flex-1 flex flex-col items-center justify-center gap-8">
-        <div className="text-9xl font-black mb-2 tabular-nums" style={{ color: status.color }}>{db}<span className="text-2xl">dB</span></div>
-        <div className="px-6 py-2 rounded-full border text-[10px] uppercase tracking-widest font-black" style={{ borderColor: status.color, color: status.color }}>{status.msg}</div>
-        
-        {/* Gráfico de riesgo acumulado */}
-        <div className="w-full max-w-sm mt-8">
-          <div className="flex justify-between text-[8px] uppercase tracking-widest text-slate-500 mb-2 font-black">
-            <span>Riesgo Acumulado</span>
-            <span>{Math.round(cumulativeRisk)}%</span>
+
+      <div className="flex-1 flex flex-col items-center justify-center gap-12">
+        {/* Medidor Analógico */}
+        <div className="relative w-full max-w-md aspect-[4/3] flex items-center justify-center">
+            <svg viewBox="0 0 200 150" className="w-full h-full overflow-visible">
+                <defs>
+                    <radialGradient id="meterGlow" cx="50%" cy="100%" r="100%" fx="50%" fy="100%">
+                        <stop offset="0%" stopColor={status.color} stopOpacity="0.15" />
+                        <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                    </radialGradient>
+                </defs>
+                <path d="M 20 130 A 80 80 0 0 1 180 130" fill="url(#meterGlow)" className="stroke-white/5" strokeWidth="15" strokeLinecap="round" />
+
+                {/* Escala */}
+                {[20, 40, 60, 80, 100, 120].map(v => {
+                    const a = ((v - 20) / 100) * Math.PI - Math.PI;
+                    const x1 = 100 + Math.cos(a) * 75;
+                    const y1 = 130 + Math.sin(a) * 75;
+                    const x2 = 100 + Math.cos(a) * 85;
+                    const y2 = 130 + Math.sin(a) * 85;
+                    const tx = 100 + Math.cos(a) * 95;
+                    const ty = 130 + Math.sin(a) * 95;
+                    return (
+                        <g key={v}>
+                            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="white" strokeOpacity="0.2" strokeWidth="1" />
+                            <text x={tx} y={ty} fill="white" fillOpacity="0.4" fontSize="6" textAnchor="middle" alignmentBaseline="middle" fontWeight="bold">{v}</text>
+                        </g>
+                    );
+                })}
+
+                {/* Aguja */}
+                <g style={{ transform: `rotate(${angle}deg)`, transformOrigin: '100px 130px' }} className="transition-transform duration-75">
+                    <line x1="100" y1="130" x2="100" y2="45" stroke={status.color} strokeWidth="2" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 5px ${status.color})` }} />
+                    <circle cx="100" cy="130" r="4" fill={status.color} />
+                </g>
+            </svg>
+
+            <div className="absolute bottom-4 flex flex-col items-center">
+                <div className="text-7xl font-black tabular-nums tracking-tighter" style={{ color: status.color, textShadow: `0 0 30px ${status.shadow}` }}>
+                    {db}<span className="text-xl ml-1 opacity-60">dBA</span>
+                </div>
+                <div className="mt-4 px-6 py-1.5 rounded-full border text-[9px] uppercase tracking-[0.3em] font-black bg-white/5 transition-colors" style={{ borderColor: `${status.color}40`, color: status.color }}>
+                    {status.msg}
+                </div>
+            </div>
+        </div>
+
+        {/* Riesgo Acumulado Optimizado */}
+        <div className="w-full max-w-xs space-y-4">
+          <div className="flex justify-between items-end">
+            <div className="flex flex-col">
+                <span className="text-[8px] uppercase tracking-[0.4em] text-slate-600 font-black">Dosímetro</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-white font-bold">Exposición Diaria</span>
+            </div>
+            <span className="text-xl font-black tabular-nums" style={{ color: cumulativeRisk > 80 ? '#ef4444' : 'white' }}>{Math.round(cumulativeRisk)}%</span>
           </div>
-          <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${cumulativeRisk}%` }} />
+          <div className="h-3 w-full bg-white/5 rounded-full border border-white/10 p-0.5 overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500 ease-out" 
+                 style={{ 
+                    width: `${cumulativeRisk}%`, 
+                    background: `linear-gradient(90deg, #39FF14, ${status.color})`,
+                    boxShadow: `0 0 10px ${status.color}40`
+                 }} />
           </div>
+          <p className="text-[8px] text-slate-500 uppercase tracking-widest text-center leading-relaxed">Referencia NIOSH: 85dBA / 8 Horas</p>
         </div>
       </div>
     </div>
