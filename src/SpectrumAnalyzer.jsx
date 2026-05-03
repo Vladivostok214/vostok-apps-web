@@ -10,7 +10,6 @@ export default function SpectrumAnalyzer({ onBack }) {
   const waterfallCanvasRef = useRef(null);
   const audioCtx = useRef(null);
   const analyser = useRef(null);
-  const sourceRef = useRef(null);
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   
@@ -20,16 +19,18 @@ export default function SpectrumAnalyzer({ onBack }) {
   const resizeCanvas = useCallback(() => {
     if (!canvasRef.current || !waterfallCanvasRef.current) return;
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvasRef.current.parentElement.getBoundingClientRect();
-    const wRect = waterfallCanvasRef.current.parentElement.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    const wCanvas = waterfallCanvasRef.current;
 
-    canvasRef.current.width = rect.width * dpr;
-    canvasRef.current.height = rect.height * dpr;
-    canvasRef.current.getContext('2d').scale(dpr, dpr);
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.getContext('2d').scale(dpr, dpr);
 
-    waterfallCanvasRef.current.width = wRect.width * dpr;
-    waterfallCanvasRef.current.height = wRect.height * dpr;
-    waterfallCanvasRef.current.getContext('2d').scale(dpr, dpr);
+    const wRect = wCanvas.parentElement.getBoundingClientRect();
+    wCanvas.width = wRect.width * dpr;
+    wCanvas.height = wRect.height * dpr;
+    wCanvas.getContext('2d').scale(dpr, dpr);
 
     if (isRunning) {
       peakArrayRef.current = new Float32Array(Math.floor(rect.width)).fill(0);
@@ -52,11 +53,8 @@ export default function SpectrumAnalyzer({ onBack }) {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
 
-      // ACTUALIZACIÓN CRÍTICA: Forzar lectura de datos
-      if (dataArrayRef.current) {
-        analyser.current.getByteFrequencyData(dataArrayRef.current);
-      }
-      
+      // EXTRACCIÓN CRÍTICA: Asegurar que el buffer se actualiza
+      analyser.current.getByteFrequencyData(dataArrayRef.current);
       const dataArray = dataArrayRef.current;
 
       ctx.fillStyle = '#030303';
@@ -71,8 +69,9 @@ export default function SpectrumAnalyzer({ onBack }) {
         const bin = Math.floor((freq * analyser.current.fftSize) / sampleRate);
         const valRaw = dataArray[bin] || 0;
         
+        // Compensación visual de 3dB por octava (Pink Noise Compensation)
         const tilt = Math.max(0, 1 - Math.log10(freq / 20) / Math.log10(20000 / 20));
-        const val = valRaw * (1 - tilt * 0.2);
+        const val = valRaw * (1 - tilt * 0.25);
         const barHeight = Math.pow(val / 255, 1.4) * (height - 60);
         
         ctx.fillStyle = `hsla(${240 - (x/width)*240}, 100%, 60%, ${val < 5 ? 0.1 : 0.8})`;
@@ -89,6 +88,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         }
       }
 
+      // Render Espectrograma (Waterfall)
       wCtx.drawImage(wCanvas, 0, 0, wCanvas.width, wCanvas.height - 1, 0, 1, wCanvas.width, wCanvas.height - 1);
       
       if (hoverData.active) {
@@ -108,6 +108,7 @@ export default function SpectrumAnalyzer({ onBack }) {
 
   const startEngine = async () => {
     try {
+      // Forzar cierre de cualquier contexto previo
       if (audioCtx.current) await audioCtx.current.close();
       
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -119,10 +120,12 @@ export default function SpectrumAnalyzer({ onBack }) {
       streamRef.current = stream;
 
       analyser.current = audioCtx.current.createAnalyser();
-      analyser.current.fftSize = 2048;
+      analyser.current.fftSize = 2048; 
+      analyser.current.smoothingTimeConstant = 0.6;
       
-      sourceRef.current = audioCtx.current.createMediaStreamSource(stream);
-      sourceRef.current.connect(analyser.current);
+      // CONEXIÓN DIRECTA: Mic -> Analizador
+      const source = audioCtx.current.createMediaStreamSource(stream);
+      source.connect(analyser.current);
       
       dataArrayRef.current = new Uint8Array(analyser.current.frequencyBinCount);
       
@@ -133,7 +136,7 @@ export default function SpectrumAnalyzer({ onBack }) {
       setIsRunning(true);
       setTimeout(resizeCanvas, 100);
     } catch (e) {
-      alert("Error de conexión: Por favor, recarga y permite el micrófono.");
+      alert("Error: Revisa los permisos de micrófono.");
     }
   };
 
@@ -151,7 +154,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   return (
     <div className="fixed inset-0 bg-[#030303] z-[100] p-3 md:p-6 flex flex-col overflow-hidden text-white font-sans">
       <header className="flex justify-between items-center mb-4">
-        <button onClick={onBack} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-white/10 active:scale-90"><ArrowLeft className="w-5 h-5 opacity-50" /></button>
+        <button onClick={onBack} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-white/10 active:scale-90 transition-all"><ArrowLeft className="w-5 h-5 opacity-50" /></button>
         <h2 className="text-[10px] font-black tracking-[0.4em] text-[#39FF14]">VOSTOK SPECTRUM</h2>
         <button onClick={() => setIsFrozen(!isFrozen)} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-[#39FF14]/20">
           {isFrozen ? <Play className="w-5 h-5 text-[#39FF14]" /> : <Pause className="w-5 h-5" />}
@@ -171,7 +174,7 @@ export default function SpectrumAnalyzer({ onBack }) {
             className="w-full h-full cursor-none" 
           />
           {!isRunning && (
-            <div onClick={startEngine} className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center cursor-pointer">
+            <div onClick={startEngine} className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center cursor-pointer group">
               <div className="w-16 h-16 rounded-full border border-[#39FF14]/20 flex items-center justify-center mb-4"><Mic className="w-6 h-6 text-[#39FF14] animate-pulse" /></div>
               <span className="text-[9px] font-black tracking-[0.5em] text-[#39FF14]">INICIAR MOTOR</span>
             </div>
