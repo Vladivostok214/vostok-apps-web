@@ -92,7 +92,13 @@ export default function SpectrumAnalyzer({ onBack }) {
   }, [isFrozen]);
   const startAnalysis = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        } 
+      });
       audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
       analyser.current = audioCtx.current.createAnalyser();
       analyser.current.fftSize = 2048;

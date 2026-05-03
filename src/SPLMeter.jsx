@@ -56,12 +56,20 @@ export default function SPLMeter({ onBack }) {
   useEffect(() => {
     const initAudio = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Constraints para deshabilitar procesamiento de hardware (AGC, Noise Suppression, Echo Cancel)
+        // Esto es CRITICO para mediciones científicas correctas.
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          } 
+        });
         audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
         analyserRef.current = audioContext.current.createAnalyser();
         const source = audioContext.current.createMediaStreamSource(stream);
         source.connect(analyserRef.current);
-        analyserRef.current.fftSize = 512;
+        analyserRef.current.fftSize = 2048; // Mayor resolución para ISO
         update();
       } catch (e) {
         console.error(e);
