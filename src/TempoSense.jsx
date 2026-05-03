@@ -63,13 +63,35 @@ export default function TempoSense({ onBack }) {
     setKey(null);
     
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 1. Captura RAW
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        } 
+      });
       setIsAnalyzing(true);
       audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContext.current.createAnalyser();
       analyserRef.current.fftSize = 4096;
+      
+      // 2. Capa de Pre-procesamiento (Blindaje Armónico)
+      const highpassFilter = audioContext.current.createBiquadFilter();
+      highpassFilter.type = 'highpass';
+      highpassFilter.frequency.value = 60; // Elimina ruido de impacto
+      highpassFilter.Q.value = 0.7;
+
+      const lowpassFilter = audioContext.current.createBiquadFilter();
+      lowpassFilter.type = 'lowpass';
+      lowpassFilter.frequency.value = 2000; // Limpia el siseo fuera del rango armónico útil
+      lowpassFilter.Q.value = 0.7;
+
+      // 3. Cadena de conexión estricta
       const source = audioContext.current.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
+      source.connect(highpassFilter);
+      highpassFilter.connect(lowpassFilter);
+      lowpassFilter.connect(analyserRef.current);
       
       const bufferLength = analyserRef.current.frequencyBinCount;
       const freqData = new Float32Array(bufferLength);
