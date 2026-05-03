@@ -5,6 +5,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   const [isRunning, setIsRunning] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
   
+  // Referencias persistentes para blindaje contra el Garbage Collector
   const canvasRef = useRef(null);
   const waterfallCanvasRef = useRef(null);
   const audioCtx = useRef(null);
@@ -13,6 +14,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   
+  // Buffers Zero-Copy
   const dataArrayRef = useRef(null);
   const peakArrayRef = useRef(null);
   const hoverRef = useRef({ active: false, x: 0 });
@@ -33,9 +35,9 @@ export default function SpectrumAnalyzer({ onBack }) {
     wCanvas.height = wRect.height * dpr;
     wCanvas.getContext('2d').scale(dpr, dpr);
 
-    if (isRunning) {
-      peakArrayRef.current = new Float32Array(Math.floor(rect.width)).fill(0);
-    }
+    // Inicializar buffer de picos según el ancho de pantalla
+    const logicalWidth = Math.floor(rect.width);
+    peakArrayRef.current = new Float32Array(logicalWidth).fill(0);
   }, [isRunning]);
 
   const draw = useCallback(() => {
@@ -54,6 +56,7 @@ export default function SpectrumAnalyzer({ onBack }) {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
 
+      // Sincronización de datos del buffer[cite: 3]
       analyser.current.getByteFrequencyData(dataArrayRef.current);
       const dataArray = dataArrayRef.current;
 
@@ -69,6 +72,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         const bin = Math.floor((freq * analyser.current.fftSize) / sampleRate);
         const valRaw = dataArray[bin] || 0;
         
+        // Compensación de inclinación (Tilt) para lectura visual plana[cite: 3]
         const tilt = Math.max(0, 1 - Math.log10(freq / 20) / Math.log10(20000 / 20));
         const val = valRaw * (1 - tilt * 0.25);
         const barHeight = Math.pow(val / 255, 1.4) * (height - 60);
@@ -76,6 +80,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         ctx.fillStyle = `hsla(${240 - (x/width)*240}, 100%, 60%, ${val < 5 ? 0.1 : 0.8})`;
         ctx.fillRect(x, height - barHeight - 32, 1, barHeight);
 
+        // Lógica de Peak Hold[cite: 3]
         if (peakArrayRef.current) {
           if (val > peakArrayRef.current[x]) peakArrayRef.current[x] = val;
           else peakArrayRef.current[x] -= 1.2;
@@ -87,6 +92,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         }
       }
 
+      // Render de Espectrograma acelerado[cite: 3]
       wCtx.drawImage(wCanvas, 0, 0, wCanvas.width, wCanvas.height - 1, 0, 1, wCanvas.width, wCanvas.height - 1);
       
       if (hoverRef.current.active) {
@@ -104,10 +110,9 @@ export default function SpectrumAnalyzer({ onBack }) {
     loop();
   }, [isRunning, isFrozen]);
 
-  // --- SECUENCIA TÁCTICA DE ENTRADA (AUDIO + ROTACIÓN + FULLSCREEN) ---
   const startEngine = async () => {
     try {
-      // 1. Solicitar pantalla completa y bloquear orientación (Mobile UX)
+      // 1. Fullscreen y Rotación[cite: 3]
       if (document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen().catch(() => {});
         if (screen.orientation && screen.orientation.lock) {
@@ -115,7 +120,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         }
       }
 
-      // 2. Inicializar Motor de Audio
+      // 2. Inicialización de AudioContext limpia[cite: 4]
       if (audioCtx.current) await audioCtx.current.close();
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       audioCtx.current = new AudioContext();
@@ -128,8 +133,20 @@ export default function SpectrumAnalyzer({ onBack }) {
       analyser.current = audioCtx.current.createAnalyser();
       analyser.current.fftSize = 2048;
       
+      // 3. Re-inclusión de Filtros (Blindaje contra DC Offset y Ruido de Impacto)
+      const highpass = audioCtx.current.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = 20; 
+
+      // 4. Conexión Forzada al Destino (Mantiene el reloj de audio activo)[cite: 4]
+      const silentGain = audioCtx.current.createGain();
+      silentGain.gain.value = 0; // Silencio total para evitar feedback
+
       sourceRef.current = audioCtx.current.createMediaStreamSource(stream);
-      sourceRef.current.connect(analyser.current);
+      sourceRef.current.connect(highpass);
+      highpass.connect(analyser.current);
+      analyser.current.connect(silentGain);
+      silentGain.connect(audioCtx.current.destination);
       
       dataArrayRef.current = new Uint8Array(analyser.current.frequencyBinCount);
       
@@ -138,9 +155,9 @@ export default function SpectrumAnalyzer({ onBack }) {
       }
 
       setIsRunning(true);
-      setTimeout(resizeCanvas, 300); // Delay mayor para permitir que el SO termine la rotación
+      setTimeout(resizeCanvas, 350); 
     } catch (e) {
-      alert("Permiso de micrófono o rotación denegado.");
+      alert("Error: Revisa los permisos de micrófono y rotación.");
     }
   };
 
@@ -200,7 +217,7 @@ export default function SpectrumAnalyzer({ onBack }) {
               </div>
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[11px] font-black tracking-[0.6em] text-[#39FF14]">INICIAR</span>
-                <span className="text-[7px] text-slate-500 tracking-[0.3em] font-bold">MÓDULO DE ANÁLISIS AUTOMÁTICO</span>
+                <span className="text-[7px] text-slate-500 tracking-[0.3em] font-bold uppercase">Módulo de Análisis Automático</span>
               </div>
             </div>
           )}
