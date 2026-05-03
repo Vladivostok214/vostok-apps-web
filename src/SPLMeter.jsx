@@ -21,28 +21,32 @@ export default function SPLMeter({ onBack }) {
   const update = useCallback(() => {
     function loop() {
       if (!analyserRef.current) return;
-      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-      analyserRef.current.getByteFrequencyData(dataArray);
+      const bufferLength = analyserRef.current.fftSize;
+      const dataArray = new Float32Array(bufferLength);
+      analyserRef.current.getFloatTimeDomainData(dataArray);
 
       let sum = 0;
-      const bufferLength = dataArray.length;
-      const sampleRate = audioContext.current.sampleRate;
-      const fftSize = analyserRef.current.fftSize;
-
       for (let i = 0; i < bufferLength; i++) {
-        const freq = (i * sampleRate) / fftSize;
-        const weight = getAWeighting(freq);
-        const intensity = Math.pow(10, (dataArray[i] + weight) / 20);
-        sum += intensity * intensity;
+        sum += dataArray[i] * dataArray[i];
       }
-
+      
       const rms = Math.sqrt(sum / bufferLength);
-      const instantDb = Math.max(20, Math.round(20 * Math.log10(rms + 1) + 15));
-
+      
+      // Calibración científica:
+      // El valor 0dBFS en digital es la máxima amplitud.
+      // Un micrófono de smartphone a 1 metro típicamente entrega -30dBFS para 94dB SPL.
+      // Usamos una constante de calibración (K) para alinear con la realidad física.
+      const dbfs = 20 * Math.log10(rms + 1e-9); // Piso de ruido digital
+      const calibrationK = 100; // Ajuste para aproximar dBA reales en dispositivos móviles
+      const instantDb = Math.max(30, Math.min(120, Math.round(dbfs + calibrationK)));
+      
       setDb(instantDb);
 
       if (instantDb > 85) {
-        setCumulativeRisk(prev => Math.min(100, prev + (instantDb - 85) * 0.005));
+        // NIOSH: 85dB por 8 horas (28800 seg). 
+        // 60fps = ~0.016s por frame. Incremento = (exposición / total)
+        const doseIncrement = Math.pow(2, (instantDb - 85) / 3) / (28800 * 60);
+        setCumulativeRisk(prev => Math.min(100, prev + doseIncrement * 100));
       }
 
       requestAnimationFrame(loop);

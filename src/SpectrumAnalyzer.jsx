@@ -32,6 +32,16 @@ export default function SpectrumAnalyzer({ onBack }) {
       const minFreq = 20;
       const maxFreq = sampleRate / 2;
 
+      // Draw Cyber Grid
+      ctx.strokeStyle = 'rgba(57, 255, 20, 0.05)';
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x <= canvas.width; x += canvas.width / 12) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += canvas.height / 8) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
       for (let i = 0; i < canvas.width; i++) {
         const freq = minFreq * Math.pow(maxFreq / minFreq, i / canvas.width);
         const bin = (freq * analyser.current.fftSize) / sampleRate;
@@ -41,17 +51,19 @@ export default function SpectrumAnalyzer({ onBack }) {
         const frac = bin - b0;
         const val = dataArray[b0] * (1 - frac) + dataArray[b1] * frac;
 
-        const barHeight = Math.pow(val / 255, 1.2) * (canvas.height - 40);
+        const barHeight = Math.pow(val / 255, 1.4) * (canvas.height - 80);
 
-        ctx.fillStyle = `hsla(${200 + (i / canvas.width) * 100}, 80%, 50%, 0.8)`;
-        ctx.fillRect(i, canvas.height - barHeight, 1, barHeight);
+        // Vostok Cyber Gradient (Cyan to Lime)
+        const hue = 180 + (i / canvas.width) * 60;
+        ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
+        ctx.fillRect(i, canvas.height - barHeight - 40, 1, barHeight);
 
         if (val > peakRef.current[i]) peakRef.current[i] = val;
-        else peakRef.current[i] -= 0.8;
+        else peakRef.current[i] -= 0.6;
 
-        const peakHeight = Math.pow(peakRef.current[i] / 255, 1.2) * (canvas.height - 40);
+        const peakHeight = Math.pow(peakRef.current[i] / 255, 1.4) * (canvas.height - 80);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(i, canvas.height - peakHeight, 1, 2);
+        ctx.fillRect(i, canvas.height - peakHeight - 42, 1, 1.5);
       }
 
       if (waterfallCanvasRef.current) {
@@ -66,10 +78,13 @@ export default function SpectrumAnalyzer({ onBack }) {
           const bin = (freq * analyser.current.fftSize) / sampleRate;
           const val = dataArray[Math.floor(bin)];
 
-          wCtx.fillStyle = `hsla(${200 + (i / wCanvas.width) * 100}, 80%, ${val/5}%, 1)`;
+          // Waterfall color mapping: Deep Purple to Bright Cyan
+          const wHue = 260 - (val / 255) * 100;
+          wCtx.fillStyle = `hsla(${wHue}, 100%, ${val / 4}%, 1)`;
           wCtx.fillRect(i, 0, 1, 1);
         }
       }
+
 
       animationRef.current = requestAnimationFrame(loop);
     }
