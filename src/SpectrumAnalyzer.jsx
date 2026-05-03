@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Pause, Play, Maximize2, Minimize2, Mic, RotateCw } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Mic } from 'lucide-react';
 
 export default function SpectrumAnalyzer({ onBack }) {
   const [isRunning, setIsRunning] = useState(false);
@@ -14,7 +14,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   
-  // Buffers Zero-Copy
+  // Buffers y datos de interacción
   const dataArrayRef = useRef(null);
   const peakArrayRef = useRef(null);
   const hoverRef = useRef({ active: false, x: 0 });
@@ -28,16 +28,17 @@ export default function SpectrumAnalyzer({ onBack }) {
     const rect = canvas.parentElement.getBoundingClientRect();
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    canvas.getContext('2d').scale(dpr, dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Reset y escalado limpio
 
     const wRect = wCanvas.parentElement.getBoundingClientRect();
     wCanvas.width = wRect.width * dpr;
     wCanvas.height = wRect.height * dpr;
-    wCanvas.getContext('2d').scale(dpr, dpr);
+    wCanvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Inicializar buffer de picos según el ancho de pantalla
-    const logicalWidth = Math.floor(rect.width);
-    peakArrayRef.current = new Float32Array(logicalWidth).fill(0);
+    if (isRunning) {
+      peakArrayRef.current = new Float32Array(Math.floor(rect.width)).fill(0);
+    }
   }, [isRunning]);
 
   const draw = useCallback(() => {
@@ -56,7 +57,7 @@ export default function SpectrumAnalyzer({ onBack }) {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
 
-      // Sincronización de datos del buffer[cite: 3]
+      // Sincronización de datos forzada
       analyser.current.getByteFrequencyData(dataArrayRef.current);
       const dataArray = dataArrayRef.current;
 
@@ -72,7 +73,6 @@ export default function SpectrumAnalyzer({ onBack }) {
         const bin = Math.floor((freq * analyser.current.fftSize) / sampleRate);
         const valRaw = dataArray[bin] || 0;
         
-        // Compensación de inclinación (Tilt) para lectura visual plana[cite: 3]
         const tilt = Math.max(0, 1 - Math.log10(freq / 20) / Math.log10(20000 / 20));
         const val = valRaw * (1 - tilt * 0.25);
         const barHeight = Math.pow(val / 255, 1.4) * (height - 60);
@@ -80,7 +80,6 @@ export default function SpectrumAnalyzer({ onBack }) {
         ctx.fillStyle = `hsla(${240 - (x/width)*240}, 100%, 60%, ${val < 5 ? 0.1 : 0.8})`;
         ctx.fillRect(x, height - barHeight - 32, 1, barHeight);
 
-        // Lógica de Peak Hold[cite: 3]
         if (peakArrayRef.current) {
           if (val > peakArrayRef.current[x]) peakArrayRef.current[x] = val;
           else peakArrayRef.current[x] -= 1.2;
@@ -92,12 +91,12 @@ export default function SpectrumAnalyzer({ onBack }) {
         }
       }
 
-      // Render de Espectrograma acelerado[cite: 3]
       wCtx.drawImage(wCanvas, 0, 0, wCanvas.width, wCanvas.height - 1, 0, 1, wCanvas.width, wCanvas.height - 1);
       
       if (hoverRef.current.active) {
         const hFreq = minFreq * Math.pow(maxFreq / minFreq, hoverRef.current.x / width);
         ctx.strokeStyle = '#39FF14';
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(hoverRef.current.x, 0); ctx.lineTo(hoverRef.current.x, height - 32); ctx.stroke();
         ctx.font = 'bold 12px "JetBrains Mono"';
@@ -110,17 +109,15 @@ export default function SpectrumAnalyzer({ onBack }) {
     loop();
   }, [isRunning, isFrozen]);
 
+  // --- BOTÓN DE 2 TAREAS: ROTACIÓN + AUDIO ---
   const startEngine = async () => {
     try {
-      // 1. Fullscreen y Rotación[cite: 3]
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen().catch(() => {});
-        if (screen.orientation && screen.orientation.lock) {
-          await screen.orientation.lock('landscape').catch(() => {});
-        }
+      // 1. Forzar Rotación (UX Táctica)
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock('landscape').catch(() => {});
       }
 
-      // 2. Inicialización de AudioContext limpia[cite: 4]
+      // 2. Inicializar Audio con Conexión Forzada (Evita silencio en mobile)[cite: 4]
       if (audioCtx.current) await audioCtx.current.close();
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       audioCtx.current = new AudioContext();
@@ -132,15 +129,15 @@ export default function SpectrumAnalyzer({ onBack }) {
 
       analyser.current = audioCtx.current.createAnalyser();
       analyser.current.fftSize = 2048;
-      
-      // 3. Re-inclusión de Filtros (Blindaje contra DC Offset y Ruido de Impacto)
+
+      // Re-inclusión de Filtros de Blindaje[cite: 5]
       const highpass = audioCtx.current.createBiquadFilter();
       highpass.type = 'highpass';
-      highpass.frequency.value = 20; 
+      highpass.frequency.value = 20;
 
-      // 4. Conexión Forzada al Destino (Mantiene el reloj de audio activo)[cite: 4]
+      // Conexión física al destino con ganancia cero para mantener el flujo vivo[cite: 4]
       const silentGain = audioCtx.current.createGain();
-      silentGain.gain.value = 0; // Silencio total para evitar feedback
+      silentGain.gain.value = 0;
 
       sourceRef.current = audioCtx.current.createMediaStreamSource(stream);
       sourceRef.current.connect(highpass);
@@ -155,16 +152,13 @@ export default function SpectrumAnalyzer({ onBack }) {
       }
 
       setIsRunning(true);
-      setTimeout(resizeCanvas, 350); 
+      setTimeout(resizeCanvas, 300);
     } catch (e) {
       alert("Error: Revisa los permisos de micrófono y rotación.");
     }
   };
 
-  const handleExit = () => {
-    if (document.exitFullscreen && document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-    }
+  const handleBack = () => {
     if (screen.orientation && screen.orientation.unlock) {
         screen.orientation.unlock();
     }
@@ -185,7 +179,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   return (
     <div className="fixed inset-0 bg-[#030303] z-[100] p-3 md:p-6 flex flex-col overflow-hidden text-white font-sans">
       <header className="flex justify-between items-center mb-4">
-        <button onClick={handleExit} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-white/10 active:scale-90 transition-all">
+        <button onClick={handleBack} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-white/10 active:scale-90 transition-all">
           <ArrowLeft className="w-5 h-5 opacity-50" />
         </button>
         <h2 className="text-[10px] font-black tracking-[0.4em] text-[#39FF14]">VOSTOK SPECTRUM</h2>
@@ -209,16 +203,13 @@ export default function SpectrumAnalyzer({ onBack }) {
           />
           {!isRunning && (
             <div onClick={startEngine} className="absolute inset-0 bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center cursor-pointer group">
-              <div className="relative mb-8">
-                <div className="absolute inset-0 bg-[#39FF14] blur-[60px] opacity-10 group-hover:opacity-30 rounded-full transition-all duration-700 animate-pulse"></div>
-                <div className="w-20 h-20 rounded-full border border-[#39FF14]/20 flex items-center justify-center relative z-10 group-hover:scale-110 transition-transform duration-500">
-                    <Mic className="w-8 h-8 text-[#39FF14]" />
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-[#39FF14] blur-[40px] opacity-10 group-hover:opacity-30 rounded-full transition-all duration-700 animate-pulse"></div>
+                <div className="w-16 h-16 rounded-full border border-[#39FF14]/20 flex items-center justify-center relative z-10 group-hover:scale-110 transition-transform duration-500">
+                    <Mic className="w-7 h-7 text-[#39FF14]" />
                 </div>
               </div>
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-[11px] font-black tracking-[0.6em] text-[#39FF14]">INICIAR</span>
-                <span className="text-[7px] text-slate-500 tracking-[0.3em] font-bold uppercase">Módulo de Análisis Automático</span>
-              </div>
+              <span className="text-[10px] font-black tracking-[0.6em] text-[#39FF14]">INICIAR</span>
             </div>
           )}
         </div>
