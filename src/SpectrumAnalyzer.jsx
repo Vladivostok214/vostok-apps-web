@@ -9,6 +9,9 @@ export default function SpectrumAnalyzer({ onBack }) {
   const animationRef = useRef(null);
   const peakRef = useRef(null);
   const waterfallCanvasRef = useRef(null);
+  
+  // OPTIMIZACIÓN: Buffer pre-asignado para evitar sobrecargar el Garbage Collector
+  const dataArrayRef = useRef(null);
 
   const draw = useCallback(() => {
     function loop() {
@@ -20,10 +23,17 @@ export default function SpectrumAnalyzer({ onBack }) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d', { alpha: false });
       const bufferLength = analyser.current.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      analyser.current.getByteFrequencyData(dataArray);
+      
+      // ZERO-COPY: Solo instanciamos el array una vez o si el tamaño del buffer cambia
+      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
+        dataArrayRef.current = new Uint8Array(bufferLength);
+      }
+      if (!peakRef.current || peakRef.current.length !== bufferLength) {
+        peakRef.current = new Float32Array(bufferLength);
+      }
 
-      if (!peakRef.current) peakRef.current = new Float32Array(bufferLength);
+      analyser.current.getByteFrequencyData(dataArrayRef.current);
+      const dataArray = dataArrayRef.current; // Usamos la referencia local
 
       ctx.fillStyle = '#050505';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -32,71 +42,69 @@ export default function SpectrumAnalyzer({ onBack }) {
       const minFreq = 20;
       const maxFreq = sampleRate / 2;
 
-    // Grid System - Fixed visibility and alignment
-    ctx.strokeStyle = 'rgba(57, 255, 20, 0.15)';
-    ctx.lineWidth = 1;
-    const gridFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
-    gridFreqs.forEach(f => {
-        const x = canvas.width * (Math.log(f / minFreq) / Math.log(maxFreq / minFreq));
-        if (x >= 0 && x <= canvas.width) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, canvas.height);
-            ctx.stroke();
-        }
-    });
-    
-    // Horizontal lines (dB levels approx)
-    for (let y = 0; y <= canvas.height; y += canvas.height / 5) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    }
+      // Sistema de Cuadrícula
+      ctx.strokeStyle = 'rgba(57, 255, 20, 0.15)';
+      ctx.lineWidth = 1;
+      const gridFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+      gridFreqs.forEach(f => {
+          const x = canvas.width * (Math.log(f / minFreq) / Math.log(maxFreq / minFreq));
+          if (x >= 0 && x <= canvas.width) {
+              ctx.beginPath();
+              ctx.moveTo(x, 0);
+              ctx.lineTo(x, canvas.height);
+              ctx.stroke();
+          }
+      });
+      
+      // Líneas horizontales
+      for (let y = 0; y <= canvas.height; y += canvas.height / 5) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
 
-    let maxVal = -1;
-    let maxFreqHz = 0;
-    let maxX = 0;
+      let maxVal = -1;
+      let maxFreqHz = 0;
+      let maxX = 0;
 
-    for (let i = 0; i < canvas.width; i++) {
-        const freq = minFreq * Math.pow(maxFreq / minFreq, i / canvas.width);
-        const bin = (freq * analyser.current.fftSize) / sampleRate;
+      for (let i = 0; i < canvas.width; i++) {
+          const freq = minFreq * Math.pow(maxFreq / minFreq, i / canvas.width);
+          const bin = (freq * analyser.current.fftSize) / sampleRate;
 
-        const b0 = Math.floor(bin);
-        const b1 = Math.min(b0 + 1, bufferLength - 1);
-        const frac = bin - b0;
-        let val = dataArray[b0] * (1 - frac) + dataArray[b1] * frac;
+          const b0 = Math.floor(bin);
+          const b1 = Math.min(b0 + 1, bufferLength - 1);
+          const frac = bin - b0;
+          let val = dataArray[b0] * (1 - frac) + dataArray[b1] * frac;
 
-        // Compensación Científica: Muchos micros móviles tienen un boost artificial en graves
-        // o capturan mucho ruido de manejo (handling noise). Aplicamos un filtro de inclinación leve
-        // para normalizar la visualización RTA.
-        const tiltCompensation = Math.max(0, 1 - Math.log10(freq / 20) / Math.log10(20000 / 20));
-        val = val * (1 - tiltCompensation * 0.3); // Reducción sutil de ruido de fondo en graves
+          // Compensación Científica
+          const tiltCompensation = Math.max(0, 1 - Math.log10(freq / 20) / Math.log10(20000 / 20));
+          val = val * (1 - tiltCompensation * 0.3);
 
-        const barHeight = Math.pow(val / 255, 1.4) * (canvas.height - 100);
+          const barHeight = Math.pow(val / 255, 1.4) * (canvas.height - 100);
 
-        const hue = 180 + (i / canvas.width) * 60;
-        ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
-        ctx.fillRect(i, canvas.height - barHeight - 40, 1, barHeight);
+          const hue = 180 + (i / canvas.width) * 60;
+          ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
+          ctx.fillRect(i, canvas.height - barHeight - 40, 1, barHeight);
 
-        if (val > peakRef.current[i]) peakRef.current[i] = val;
-        else peakRef.current[i] -= 0.5;
+          if (val > peakRef.current[i]) peakRef.current[i] = val;
+          else peakRef.current[i] -= 0.5;
 
-        const peakHeight = Math.pow(peakRef.current[i] / 255, 1.4) * (canvas.height - 100);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(i, canvas.height - peakHeight - 42, 1, 1.5);
+          const peakHeight = Math.pow(peakRef.current[i] / 255, 1.4) * (canvas.height - 100);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(i, canvas.height - peakHeight - 42, 1, 1.5);
 
-        if (val > maxVal) {
-            maxVal = val;
-            maxFreqHz = freq;
-            maxX = i;
-        }
-    }
+          if (val > maxVal) {
+              maxVal = val;
+              maxFreqHz = freq;
+              maxX = i;
+          }
+      }
 
-    // RTA Peak Label
-    if (maxVal > 50) {
-        ctx.fillStyle = '#39FF14';
-        ctx.font = 'bold 12px monospace';
-        const label = `${Math.round(maxFreqHz)}Hz`;
-        ctx.fillText(label, Math.min(canvas.width - 50, Math.max(10, maxX - 20)), canvas.height - (Math.pow(maxVal/255, 1.4) * (canvas.height-100)) - 55);
-    }
+      // Etiqueta de Pico RTA
+      if (maxVal > 50) {
+          ctx.fillStyle = '#39FF14';
+          ctx.font = 'bold 12px monospace';
+          const label = `${Math.round(maxFreqHz)}Hz`;
+          ctx.fillText(label, Math.min(canvas.width - 50, Math.max(10, maxX - 20)), canvas.height - (Math.pow(maxVal/255, 1.4) * (canvas.height-100)) - 55);
+      }
 
       if (waterfallCanvasRef.current) {
         const wCanvas = waterfallCanvasRef.current;
@@ -110,20 +118,20 @@ export default function SpectrumAnalyzer({ onBack }) {
           const bin = (freq * analyser.current.fftSize) / sampleRate;
           const val = dataArray[Math.floor(bin)];
 
-          // Waterfall color mapping: Deep Purple to Bright Cyan
           const wHue = 260 - (val / 255) * 100;
           wCtx.fillStyle = `hsla(${wHue}, 100%, ${val / 4}%, 1)`;
           wCtx.fillRect(i, 0, 1, 1);
         }
       }
 
-
       animationRef.current = requestAnimationFrame(loop);
     }
     loop();
   }, [isFrozen]);
+
   const startAnalysis = useCallback(async () => {
     try {
+      // 1. Captura RAW
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: false,
@@ -131,12 +139,23 @@ export default function SpectrumAnalyzer({ onBack }) {
           autoGainControl: false
         } 
       });
+      
       audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
       analyser.current = audioCtx.current.createAnalyser();
       analyser.current.fftSize = 2048;
       analyser.current.smoothingTimeConstant = 0.8;
+      
+      // 2. Filtro Desacoplado: Limpiar ruido subsónico (<20Hz)
+      const highpassFilter = audioCtx.current.createBiquadFilter();
+      highpassFilter.type = 'highpass';
+      highpassFilter.frequency.value = 20; 
+      highpassFilter.Q.value = 0.7;
+
+      // 3. Cadena de conexión
       const source = audioCtx.current.createMediaStreamSource(stream);
-      source.connect(analyser.current);
+      source.connect(highpassFilter);
+      highpassFilter.connect(analyser.current);
+      
       draw();
     } catch (e) {
       console.error(e);
@@ -168,11 +187,10 @@ export default function SpectrumAnalyzer({ onBack }) {
         <div className="flex-1 relative border border-white/10 rounded-[2rem] overflow-hidden bg-black shadow-2xl">
             <canvas ref={canvasRef} width="1000" height="400" className="w-full h-full object-cover" />
             
-            {/* Etiquetas de frecuencia alineadas logarítmicamente */}
             <div className="absolute bottom-4 left-0 right-0 px-6 flex justify-between pointer-events-none">
                 {[20, 100, 500, 1000, 5000, 20000].map(f => {
                     const minFreq = 20;
-                    const maxFreq = 22050; // aproximado sampleRate/2
+                    const maxFreq = 22050; 
                     const x = (Math.log(f / minFreq) / Math.log(maxFreq / minFreq)) * 100;
                     return (
                         <span key={f} className="text-[8px] font-black text-slate-600 uppercase tracking-[0.1em] absolute" style={{ left: `${x}%`, transform: 'translateX(-50%)' }}>

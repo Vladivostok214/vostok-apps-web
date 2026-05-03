@@ -5,10 +5,15 @@ export default function SPLMeter({ onBack }) {
   const [db, setDb] = useState(20);
   const [cumulativeRisk, setCumulativeRisk] = useState(0);
   const [visualDb, setVisualDb] = useState(20);
+  
   const audioContext = useRef(null);
   const analyserRef = useRef(null);
+  const reqIdRef = useRef(null);
+  
+  // OPTIMIZACIÓN ZERO-COPY: Buffer pre-asignado
+  const dataArrayRef = useRef(null);
 
-  // Filtro de Ponderación A (A-weighting approximation)
+  // Filtro de Ponderación A (A-weighting approximation ISO)
   const getAWeighting = (freq) => {
     const f2 = freq * freq;
     const f4 = f2 * f2;
@@ -20,44 +25,62 @@ export default function SPLMeter({ onBack }) {
 
   const update = useCallback(() => {
     function loop() {
-      if (!analyserRef.current) return;
-      const bufferLength = analyserRef.current.fftSize;
-      const dataArray = new Float32Array(bufferLength);
-      analyserRef.current.getFloatTimeDomainData(dataArray);
-
-      let sum = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        sum += dataArray[i] * dataArray[i];
+      if (!analyserRef.current || !audioContext.current) return;
+      
+      const bufferLength = analyserRef.current.frequencyBinCount;
+      
+      // ZERO-COPY: Evitamos saturar el Garbage Collector a 60 FPS
+      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
+        dataArrayRef.current = new Float32Array(bufferLength);
       }
       
-      const rms = Math.sqrt(sum / bufferLength);
+      const dataArray = dataArrayRef.current;
       
-      // Calibración científica:
-      // El valor 0dBFS en digital es la máxima amplitud.
-      // Un micrófono de smartphone a 1 metro típicamente entrega -30dBFS para 94dB SPL.
-      // Usamos una constante de calibración (K) para alinear con la realidad física.
-      const dbfs = 20 * Math.log10(rms + 1e-9); // Piso de ruido digital
-      const calibrationK = 100; // Ajuste para aproximar dBA reales en dispositivos móviles
-      const instantDb = Math.max(30, Math.min(120, Math.round(dbfs + calibrationK)));
+      // EXTRACCIÓN CIENTÍFICA: Ahora usamos el dominio de la frecuencia
+      analyserRef.current.getFloatFrequencyData(dataArray);
+
+      let sumPower = 0;
+      const sampleRate = audioContext.current.sampleRate;
+      const nyquist = sampleRate / 2;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const freq = (i * nyquist) / bufferLength;
+        
+        // Descartar frecuencias fuera del rango auditivo útil para no falsear el dBA
+        if (freq < 20 || freq > 20000) continue;
+
+        const dbfs = dataArray[i];
+        if (dbfs === -Infinity) continue;
+
+        // Ponderación A: Restamos/Sumamos decibelios según la sensibilidad humana
+        const aWeight = getAWeighting(freq);
+        const weightedDbfs = dbfs + aWeight;
+
+        // Para sumar decibelios, debemos convertirlos a potencia lineal primero
+        sumPower += Math.pow(10, weightedDbfs / 10);
+      }
+      
+      // Volver a decibelios y aplicar la constante de calibración K para micrófonos móviles
+      const totalDbfs = 10 * Math.log10(sumPower + 1e-12);
+      const calibrationK = 115; // Ajuste empírico aproximado a presión sonora real
+      const instantDb = Math.max(30, Math.min(120, Math.round(totalDbfs + calibrationK)));
       
       setDb(instantDb);
 
+      // Dosímetro NIOSH
       if (instantDb > 85) {
-        // NIOSH: 85dB por 8 horas (28800 seg). 
-        // 60fps = ~0.016s por frame. Incremento = (exposición / total)
         const doseIncrement = Math.pow(2, (instantDb - 85) / 3) / (28800 * 60);
         setCumulativeRisk(prev => Math.min(100, prev + doseIncrement * 100));
       }
 
-      requestAnimationFrame(loop);
+      reqIdRef.current = requestAnimationFrame(loop);
     }
     loop();
   }, []);
+
   useEffect(() => {
     const initAudio = async () => {
       try {
-        // Constraints para deshabilitar procesamiento de hardware (AGC, Noise Suppression, Echo Cancel)
-        // Esto es CRITICO para mediciones científicas correctas.
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: false,
@@ -69,17 +92,23 @@ export default function SPLMeter({ onBack }) {
         analyserRef.current = audioContext.current.createAnalyser();
         const source = audioContext.current.createMediaStreamSource(stream);
         source.connect(analyserRef.current);
-        analyserRef.current.fftSize = 2048; // Mayor resolución para ISO
+        
+        // Alta resolución (4096 bins) para captar con precisión la curva de ecualización A
+        analyserRef.current.fftSize = 4096; 
         update();
       } catch (e) {
         console.error(e);
       }
     };
     initAudio();
-    return () => { if (audioContext.current) audioContext.current.close(); };
+    
+    return () => { 
+        if (reqIdRef.current) cancelAnimationFrame(reqIdRef.current);
+        if (audioContext.current) audioContext.current.close(); 
+    };
   }, [update]);
 
-  // Suavizado de la aguja visual
+  // Suavizado de la aguja visual para UX "Noir-Tech"
   useEffect(() => {
     let animId;
     const animate = () => {
@@ -108,13 +137,12 @@ export default function SPLMeter({ onBack }) {
         <button onClick={onBack} className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all"><ArrowLeft className="w-5 h-5" /></button>
         <div className="text-center">
             <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39FF14] mb-1">A-Weighted SPL</h2>
-            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Analog Reference / 20Hz-20kHz</div>
+            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Scientific Reference / 20Hz-20kHz</div>
         </div>
         <div className="w-11" />
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center gap-12">
-        {/* Medidor Analógico */}
         <div className="relative w-full max-w-md aspect-[4/3] flex items-center justify-center">
             <svg viewBox="0 0 200 150" className="w-full h-full overflow-visible">
                 <defs>
@@ -125,7 +153,6 @@ export default function SPLMeter({ onBack }) {
                 </defs>
                 <path d="M 20 130 A 80 80 0 0 1 180 130" fill="url(#meterGlow)" className="stroke-white/5" strokeWidth="15" strokeLinecap="round" />
 
-                {/* Escala */}
                 {[20, 40, 60, 80, 100, 120].map(v => {
                     const a = ((v - 20) / 100) * Math.PI - Math.PI;
                     const x1 = 100 + Math.cos(a) * 75;
@@ -142,7 +169,6 @@ export default function SPLMeter({ onBack }) {
                     );
                 })}
 
-                {/* Aguja */}
                 <g style={{ transform: `rotate(${angle}deg)`, transformOrigin: '100px 130px' }} className="transition-transform duration-75">
                     <line x1="100" y1="130" x2="100" y2="45" stroke={status.color} strokeWidth="2" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 5px ${status.color})` }} />
                     <circle cx="100" cy="130" r="4" fill={status.color} />
@@ -159,11 +185,10 @@ export default function SPLMeter({ onBack }) {
             </div>
         </div>
 
-        {/* Riesgo Acumulado Optimizado */}
         <div className="w-full max-w-xs space-y-4">
           <div className="flex justify-between items-end">
             <div className="flex flex-col">
-                <span className="text-[8px] uppercase tracking-[0.4em] text-slate-600 font-black">Dosímetro</span>
+                <span className="text-[8px] uppercase tracking-[0.4em] text-slate-600 font-black">Dosímetro NIOSH</span>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-white font-bold">Exposición Diaria</span>
             </div>
             <span className="text-xl font-black tabular-nums" style={{ color: cumulativeRisk > 80 ? '#ef4444' : 'white' }}>{Math.round(cumulativeRisk)}%</span>
@@ -176,7 +201,7 @@ export default function SPLMeter({ onBack }) {
                     boxShadow: `0 0 10px ${status.color}40`
                  }} />
           </div>
-          <p className="text-[8px] text-slate-500 uppercase tracking-widest text-center leading-relaxed">Referencia NIOSH: 85dBA / 8 Horas</p>
+          <p className="text-[8px] text-slate-500 uppercase tracking-widest text-center leading-relaxed">Ponderación A Aplicada (Real-time DSP)</p>
         </div>
       </div>
     </div>
