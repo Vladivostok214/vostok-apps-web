@@ -300,12 +300,36 @@ function VostokTuner({ onBack }) {
 
   const startListening = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 1. Captura RAW: Desactivamos el procesamiento nativo para evitar latencia adicional
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        } 
+      });
+      
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 2048;
+      
+      // 2. Capa de Pre-procesamiento (Filtros Desacoplados)
+      const highpassFilter = audioContextRef.current.createBiquadFilter();
+      highpassFilter.type = 'highpass';
+      highpassFilter.frequency.value = 60; // Filtra ruido de manejo y retumbe
+      highpassFilter.Q.value = 0.7;
+
+      const lowpassFilter = audioContextRef.current.createBiquadFilter();
+      lowpassFilter.type = 'lowpass';
+      lowpassFilter.frequency.value = 2000; // Filtra siseo y estática de alta frecuencia
+      lowpassFilter.Q.value = 0.7;
+
+      // 3. Cadena de conexión estricta
       mediaStreamSourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
-      mediaStreamSourceRef.current.connect(analyserRef.current);
+      mediaStreamSourceRef.current.connect(highpassFilter);
+      highpassFilter.connect(lowpassFilter);
+      lowpassFilter.connect(analyserRef.current);
+      
       setIsListening(true);
       requestWakeLock();
       updateLoop();
