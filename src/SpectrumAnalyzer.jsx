@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Pause, Play, Mic, RotateCw } from 'lucide-react';
 
 export default function SpectrumAnalyzer({ onBack }) {
-  const [prepStep, setPrepStep] = useState(0); // 0: Inicio, 1: Rotado/Listo, 2: Corriendo
+  const [prepStep, setPrepStep] = useState(0); // 0: Standby, 1: Ready, 2: Engine Running
   const [isFrozen, setIsFrozen] = useState(false);
   
+  // Referencias persistentes (Evitan que el recolector de basura corte la señal)
   const canvasRef = useRef(null);
   const waterfallCanvasRef = useRef(null);
   const audioCtx = useRef(null);
@@ -13,10 +14,12 @@ export default function SpectrumAnalyzer({ onBack }) {
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   
+  // Buffers de alto rendimiento
   const dataArrayRef = useRef(null);
   const peakArrayRef = useRef(null);
   const hoverRef = useRef({ active: false, x: 0 });
 
+  // --- SINCRONIZACIÓN DE LIENZO ---
   const resizeCanvas = useCallback(() => {
     if (!canvasRef.current || !waterfallCanvasRef.current) return;
     const dpr = window.devicePixelRatio || 1;
@@ -38,6 +41,7 @@ export default function SpectrumAnalyzer({ onBack }) {
     }
   }, [prepStep]);
 
+  // --- BUCLE DE RENDERIZADO DSP ---
   const draw = useCallback(() => {
     const loop = () => {
       if (prepStep !== 2 || isFrozen || !canvasRef.current || !analyser.current) {
@@ -54,7 +58,7 @@ export default function SpectrumAnalyzer({ onBack }) {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
 
-      // Sincronización de datos del buffer
+      // EXTRACCIÓN DE DATOS REAL-TIME[cite: 3]
       analyser.current.getByteFrequencyData(dataArrayRef.current);
       const dataArray = dataArrayRef.current;
 
@@ -70,6 +74,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         const bin = Math.floor((freq * analyser.current.fftSize) / sampleRate);
         const valRaw = dataArray[bin] || 0;
         
+        // Compensación de curva de respuesta humana (Pink Tilt)[cite: 3]
         const tilt = Math.max(0, 1 - Math.log10(freq / 20) / Math.log10(20000 / 20));
         const val = valRaw * (1 - tilt * 0.25);
         const barHeight = Math.pow(val / 255, 1.4) * (height - 60);
@@ -77,6 +82,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         ctx.fillStyle = `hsla(${240 - (x/width)*240}, 100%, 60%, ${val < 5 ? 0.1 : 0.8})`;
         ctx.fillRect(x, height - barHeight - 32, 1, barHeight);
 
+        // Peak Hold dinámico
         if (peakArrayRef.current) {
           if (val > peakArrayRef.current[x]) peakArrayRef.current[x] = val;
           else peakArrayRef.current[x] -= 1.2;
@@ -88,17 +94,19 @@ export default function SpectrumAnalyzer({ onBack }) {
         }
       }
 
+      // Desplazamiento del Espectrograma
       wCtx.drawImage(wCanvas, 0, 0, wCanvas.width, wCanvas.height - 1, 0, 1, wCanvas.width, wCanvas.height - 1);
       
+      // HUD de Precisión
       if (hoverRef.current.active) {
         const hFreq = minFreq * Math.pow(maxFreq / minFreq, hoverRef.current.x / width);
         ctx.strokeStyle = '#39FF14';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(hoverRef.current.x, 0); ctx.lineTo(hoverRef.current.x, height - 32); ctx.stroke();
-        ctx.font = 'bold 12px "JetBrains Mono"';
+        ctx.font = '900 14px "JetBrains Mono"';
         ctx.fillStyle = '#39FF14';
-        ctx.fillText(`${Math.round(hFreq)}Hz`, hoverRef.current.x + 8, 20);
+        ctx.fillText(`${Math.round(hFreq)}Hz`, hoverRef.current.x + 10, 30);
       }
 
       animationRef.current = requestAnimationFrame(loop);
@@ -106,7 +114,7 @@ export default function SpectrumAnalyzer({ onBack }) {
     loop();
   }, [prepStep, isFrozen]);
 
-  // PASO 1: Rotar
+  // PASO 1: ORIENTACIÓN[cite: 3]
   const handleRotate = async () => {
     try {
       if (screen.orientation && screen.orientation.lock) {
@@ -114,12 +122,10 @@ export default function SpectrumAnalyzer({ onBack }) {
       }
       setPrepStep(1);
       setTimeout(resizeCanvas, 300);
-    } catch (e) {
-      setPrepStep(1); // Continuar si falla la API de bloqueo
-    }
+    } catch (e) { setPrepStep(1); }
   };
 
-  // PASO 2: Iniciar Audio[cite: 3, 4]
+  // PASO 2: IGNICIÓN DEL MOTOR (Conexión forzada)[cite: 4, 5]
   const startEngine = async () => {
     try {
       if (audioCtx.current) await audioCtx.current.close();
@@ -132,8 +138,9 @@ export default function SpectrumAnalyzer({ onBack }) {
       streamRef.current = stream;
 
       analyser.current = audioCtx.current.createAnalyser();
-      analyser.current.fftSize = 2048;
+      analyser.current.fftSize = 4096; // Mayor resolución espectral
 
+      // BLINDAJE: Conexión física silenciosa para mantener el reloj activo
       const silentGain = audioCtx.current.createGain();
       silentGain.gain.value = 0;
 
@@ -149,16 +156,12 @@ export default function SpectrumAnalyzer({ onBack }) {
       }
 
       setPrepStep(2);
-      setTimeout(resizeCanvas, 150);
-    } catch (e) {
-      alert("Error de micrófono.");
-    }
+      setTimeout(resizeCanvas, 200);
+    } catch (e) { alert("Acceso denegado al hardware."); }
   };
 
   const handleBack = () => {
-    if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-    }
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
     onBack();
   };
 
@@ -176,9 +179,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   return (
     <div className="fixed inset-0 bg-[#030303] z-[100] p-3 md:p-6 flex flex-col overflow-hidden text-white font-sans">
       <header className="flex justify-between items-center mb-4">
-        <button onClick={handleBack} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-white/10 active:scale-90 transition-all">
-          <ArrowLeft className="w-5 h-5 opacity-50" />
-        </button>
+        <button onClick={handleBack} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-white/10 active:scale-90 transition-all"><ArrowLeft className="w-5 h-5 opacity-50" /></button>
         <h2 className="text-[10px] font-black tracking-[0.4em] text-[#39FF14]">VOSTOK SPECTRUM</h2>
         <button onClick={() => setIsFrozen(!isFrozen)} className="w-10 h-10 glass-panel rounded-xl flex items-center justify-center border border-[#39FF14]/20">
           {isFrozen ? <Play className="w-5 h-5 text-[#39FF14]" /> : <Pause className="w-5 h-5" />}
@@ -201,15 +202,13 @@ export default function SpectrumAnalyzer({ onBack }) {
           
           {prepStep === 0 && (
             <div onClick={handleRotate} className="absolute inset-0 bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center cursor-pointer group">
-              <div className="w-16 h-16 rounded-full border border-[#39FF14]/20 flex items-center justify-center mb-4 group-hover:border-[#39FF14]/50 transition-all">
-                <RotateCw className="w-6 h-6 text-[#39FF14] animate-spin-slow" />
-              </div>
+              <div className="w-16 h-16 rounded-full border border-[#39FF14]/20 flex items-center justify-center mb-4"><RotateCw className="w-6 h-6 text-[#39FF14]" /></div>
               <span className="text-[9px] font-black tracking-[0.5em] text-[#39FF14]">OPTIMIZAR VISTA</span>
             </div>
           )}
 
           {prepStep === 1 && (
-            <div onClick={startEngine} className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center cursor-pointer group animate-in fade-in duration-500">
+            <div onClick={startEngine} className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center cursor-pointer group">
               <div className="w-16 h-16 rounded-full border border-[#39FF14]/40 flex items-center justify-center mb-4"><Mic className="w-6 h-6 text-[#39FF14] animate-pulse" /></div>
               <span className="text-[9px] font-black tracking-[0.5em] text-[#39FF14]">INICIAR MOTOR DSP</span>
             </div>
