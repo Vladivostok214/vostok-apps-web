@@ -127,6 +127,8 @@ const autoCorrelate = (buf, sampleRate) => {
   }
 
   let T0 = maxpos;
+  if (T0 <= 0 || T0 >= activeSize - 1) return -1;
+  
   const x1 = correlationBuffer[T0 - 1], x2 = correlationBuffer[T0], x3 = correlationBuffer[T0 + 1];
   const a = (x1 + x3 - 2 * x2) / 2;
   const b = (x3 - x1) / 2;
@@ -155,7 +157,7 @@ const PROTAGONISTAS = [
 const useWakeLock = () => {
   const wakeLock = useRef(null);
   
-  const requestWakeLock = async () => {
+  const requestWakeLock = useCallback(async () => {
     if ('wakeLock' in navigator && 'request' in navigator.wakeLock) {
       try {
         wakeLock.current = await navigator.wakeLock.request('screen');
@@ -163,12 +165,14 @@ const useWakeLock = () => {
         console.error(`${err.name}, ${err.message}`);
       }
     }
-  };
+  }, []);
 
-  const releaseWakeLock = () => {
-    wakeLock.current?.release();
-    wakeLock.current = null;
-  };
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLock.current) {
+      wakeLock.current.release();
+      wakeLock.current = null;
+    }
+  }, []);
 
   return { requestWakeLock, releaseWakeLock };
 };
@@ -261,43 +265,38 @@ function VostokTuner({ onBack }) {
   const analyserRef = useRef(null);
   const mediaStreamSourceRef = useRef(null);
   const rafIdRef = useRef(null);
+  const audioBufferRef = useRef(null);
   const fileInputRef = useRef(null);
+  const refPitchRef = useRef(refPitch);
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
 
-  const stopListening = useCallback(() => {
-    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
-    if (mediaStreamSourceRef.current) mediaStreamSourceRef.current.mediaStream.getTracks().forEach(t => t.stop());
-    if (audioContextRef.current) audioContextRef.current.close();
-    setIsListening(false);
-    setPitch(null);
-    releaseWakeLock();
-  }, [releaseWakeLock]);
-
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    refPitchRef.current = refPitch;
+  }, [refPitch]);
 
-  // Haptic feedback cuando está afinado
-  useEffect(() => {
-    if (isListening && Math.abs(cents) < 2) {
-      if ('vibrate' in navigator) navigator.vibrate(10);
+  const updateLoop = useCallback(() => {
+    function loop() {
+      if (!analyserRef.current || !audioContextRef.current) return;
+      
+      if (!audioBufferRef.current) {
+          audioBufferRef.current = new Float32Array(analyserRef.current.fftSize);
+      }
+      
+      analyserRef.current.getFloatTimeDomainData(audioBufferRef.current);
+      const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
+      
+      if (freq !== -1) {
+        const midi = 12 * (Math.log(freq / refPitchRef.current) / Math.log(2)) + 69;
+        const target = Math.round(midi);
+        setCents((midi - target) * 100);
+        setPitch(freq);
+        setTargetMidi(target);
+      }
+      
+      rafIdRef.current = requestAnimationFrame(loop);
     }
-  }, [targetMidi, cents, isListening]);
-
-  useEffect(() => {
-    let animId;
-    const animate = () => {
-      setVisualCents(prev => {
-        const sensitivity = 0.35 - (smoothValue / 100) * 0.33;
-        const diff = cents - prev;
-        if (Math.abs(diff) < 0.001) return cents;
-        return prev + diff * sensitivity;
-      });
-      animId = requestAnimationFrame(animate);
-    };
-    if (isListening) animate();
-    return () => cancelAnimationFrame(animId);
-  }, [cents, smoothValue, isListening]);
+    loop();
+  }, []);
 
   const startListening = async () => {
     try {
@@ -316,20 +315,43 @@ function VostokTuner({ onBack }) {
     }
   };
 
-  const updateLoop = () => {
-    if (!analyserRef.current) return;
-    const buffer = new Float32Array(analyserRef.current.fftSize);
-    analyserRef.current.getFloatTimeDomainData(buffer);
-    const freq = autoCorrelate(buffer, audioContextRef.current.sampleRate);
-    if (freq !== -1) {
-      const midi = 12 * (Math.log(freq / refPitch) / Math.log(2)) + 69;
-      let target = Math.round(midi);
-      setCents((midi - target) * 100);
-      setPitch(freq);
-      setTargetMidi(target);
+  const stopListening = useCallback(() => {
+    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+    if (mediaStreamSourceRef.current) {
+        const stream = mediaStreamSourceRef.current.mediaStream;
+        if (stream) stream.getTracks().forEach(t => t.stop());
     }
-    rafIdRef.current = requestAnimationFrame(updateLoop);
-  };
+    if (audioContextRef.current) audioContextRef.current.close();
+    setIsListening(false);
+    setPitch(null);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
+
+  useEffect(() => {
+    return () => stopListening();
+  }, [stopListening]);
+
+  // Haptic feedback cuando está afinado
+  useEffect(() => {
+    if (isListening && Math.abs(cents) < 2) {
+      if ('vibrate' in navigator) navigator.vibrate(10);
+    }
+  }, [cents, isListening]);
+
+  useEffect(() => {
+    let animId;
+    const animate = () => {
+      setVisualCents(prev => {
+        const sensitivity = 0.35 - (smoothValue / 100) * 0.33;
+        const diff = cents - prev;
+        if (Math.abs(diff) < 0.001) return cents;
+        return prev + diff * sensitivity;
+      });
+      animId = requestAnimationFrame(animate);
+    };
+    if (isListening) animate();
+    return () => cancelAnimationFrame(animId);
+  }, [cents, smoothValue, isListening]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
