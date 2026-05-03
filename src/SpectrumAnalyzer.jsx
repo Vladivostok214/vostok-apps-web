@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Pause, Play, Mic } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Mic, RotateCw } from 'lucide-react';
 
 export default function SpectrumAnalyzer({ onBack }) {
-  const [isRunning, setIsRunning] = useState(false);
+  const [prepStep, setPrepStep] = useState(0); // 0: Inicio, 1: Rotado/Listo, 2: Corriendo
   const [isFrozen, setIsFrozen] = useState(false);
   
-  // Referencias persistentes para blindaje contra el Garbage Collector
   const canvasRef = useRef(null);
   const waterfallCanvasRef = useRef(null);
   const audioCtx = useRef(null);
@@ -14,7 +13,6 @@ export default function SpectrumAnalyzer({ onBack }) {
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   
-  // Buffers y datos de interacción
   const dataArrayRef = useRef(null);
   const peakArrayRef = useRef(null);
   const hoverRef = useRef({ active: false, x: 0 });
@@ -28,22 +26,21 @@ export default function SpectrumAnalyzer({ onBack }) {
     const rect = canvas.parentElement.getBoundingClientRect();
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Reset y escalado limpio
+    canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const wRect = wCanvas.parentElement.getBoundingClientRect();
     wCanvas.width = wRect.width * dpr;
     wCanvas.height = wRect.height * dpr;
     wCanvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    if (isRunning) {
+    if (prepStep === 2) {
       peakArrayRef.current = new Float32Array(Math.floor(rect.width)).fill(0);
     }
-  }, [isRunning]);
+  }, [prepStep]);
 
   const draw = useCallback(() => {
     const loop = () => {
-      if (!isRunning || isFrozen || !canvasRef.current || !analyser.current) {
+      if (prepStep !== 2 || isFrozen || !canvasRef.current || !analyser.current) {
         animationRef.current = requestAnimationFrame(loop);
         return;
       }
@@ -57,7 +54,7 @@ export default function SpectrumAnalyzer({ onBack }) {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
 
-      // Sincronización de datos forzada
+      // Sincronización de datos del buffer
       analyser.current.getByteFrequencyData(dataArrayRef.current);
       const dataArray = dataArrayRef.current;
 
@@ -107,17 +104,24 @@ export default function SpectrumAnalyzer({ onBack }) {
       animationRef.current = requestAnimationFrame(loop);
     };
     loop();
-  }, [isRunning, isFrozen]);
+  }, [prepStep, isFrozen]);
 
-  // --- BOTÓN DE 2 TAREAS: ROTACIÓN + AUDIO ---
-  const startEngine = async () => {
+  // PASO 1: Rotar
+  const handleRotate = async () => {
     try {
-      // 1. Forzar Rotación (UX Táctica)
       if (screen.orientation && screen.orientation.lock) {
         await screen.orientation.lock('landscape').catch(() => {});
       }
+      setPrepStep(1);
+      setTimeout(resizeCanvas, 300);
+    } catch (e) {
+      setPrepStep(1); // Continuar si falla la API de bloqueo
+    }
+  };
 
-      // 2. Inicializar Audio con Conexión Forzada (Evita silencio en mobile)[cite: 4]
+  // PASO 2: Iniciar Audio[cite: 3, 4]
+  const startEngine = async () => {
+    try {
       if (audioCtx.current) await audioCtx.current.close();
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       audioCtx.current = new AudioContext();
@@ -130,18 +134,11 @@ export default function SpectrumAnalyzer({ onBack }) {
       analyser.current = audioCtx.current.createAnalyser();
       analyser.current.fftSize = 2048;
 
-      // Re-inclusión de Filtros de Blindaje[cite: 5]
-      const highpass = audioCtx.current.createBiquadFilter();
-      highpass.type = 'highpass';
-      highpass.frequency.value = 20;
-
-      // Conexión física al destino con ganancia cero para mantener el flujo vivo[cite: 4]
       const silentGain = audioCtx.current.createGain();
       silentGain.gain.value = 0;
 
       sourceRef.current = audioCtx.current.createMediaStreamSource(stream);
-      sourceRef.current.connect(highpass);
-      highpass.connect(analyser.current);
+      sourceRef.current.connect(analyser.current);
       analyser.current.connect(silentGain);
       silentGain.connect(audioCtx.current.destination);
       
@@ -151,10 +148,10 @@ export default function SpectrumAnalyzer({ onBack }) {
         await audioCtx.current.resume();
       }
 
-      setIsRunning(true);
-      setTimeout(resizeCanvas, 300);
+      setPrepStep(2);
+      setTimeout(resizeCanvas, 150);
     } catch (e) {
-      alert("Error: Revisa los permisos de micrófono y rotación.");
+      alert("Error de micrófono.");
     }
   };
 
@@ -167,14 +164,14 @@ export default function SpectrumAnalyzer({ onBack }) {
 
   useEffect(() => {
     window.addEventListener('resize', resizeCanvas);
-    if (isRunning) draw();
+    if (prepStep === 2) draw();
     return () => {
       window.removeEventListener('resize', resizeCanvas);
       cancelAnimationFrame(animationRef.current);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       if (audioCtx.current) audioCtx.current.close();
     };
-  }, [isRunning, draw, resizeCanvas]);
+  }, [prepStep, draw, resizeCanvas]);
 
   return (
     <div className="fixed inset-0 bg-[#030303] z-[100] p-3 md:p-6 flex flex-col overflow-hidden text-white font-sans">
@@ -201,18 +198,24 @@ export default function SpectrumAnalyzer({ onBack }) {
             onTouchEnd={() => { hoverRef.current = { active: false, x: 0 }; }}
             className="w-full h-full cursor-none" 
           />
-          {!isRunning && (
-            <div onClick={startEngine} className="absolute inset-0 bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center cursor-pointer group">
-              <div className="relative mb-6">
-                <div className="absolute inset-0 bg-[#39FF14] blur-[40px] opacity-10 group-hover:opacity-30 rounded-full transition-all duration-700 animate-pulse"></div>
-                <div className="w-16 h-16 rounded-full border border-[#39FF14]/20 flex items-center justify-center relative z-10 group-hover:scale-110 transition-transform duration-500">
-                    <Mic className="w-7 h-7 text-[#39FF14]" />
-                </div>
+          
+          {prepStep === 0 && (
+            <div onClick={handleRotate} className="absolute inset-0 bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center cursor-pointer group">
+              <div className="w-16 h-16 rounded-full border border-[#39FF14]/20 flex items-center justify-center mb-4 group-hover:border-[#39FF14]/50 transition-all">
+                <RotateCw className="w-6 h-6 text-[#39FF14] animate-spin-slow" />
               </div>
-              <span className="text-[10px] font-black tracking-[0.6em] text-[#39FF14]">INICIAR</span>
+              <span className="text-[9px] font-black tracking-[0.5em] text-[#39FF14]">OPTIMIZAR VISTA</span>
+            </div>
+          )}
+
+          {prepStep === 1 && (
+            <div onClick={startEngine} className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center cursor-pointer group animate-in fade-in duration-500">
+              <div className="w-16 h-16 rounded-full border border-[#39FF14]/40 flex items-center justify-center mb-4"><Mic className="w-6 h-6 text-[#39FF14] animate-pulse" /></div>
+              <span className="text-[9px] font-black tracking-[0.5em] text-[#39FF14]">INICIAR MOTOR DSP</span>
             </div>
           )}
         </div>
+
         <div className="flex-1 relative glass-panel rounded-2xl overflow-hidden border border-white/5 bg-[#010101]">
           <canvas ref={waterfallCanvasRef} className="w-full h-full" />
           <div className="absolute top-2 left-4 text-[7px] font-black text-cyan-400 uppercase tracking-widest opacity-40">Espectrograma</div>
