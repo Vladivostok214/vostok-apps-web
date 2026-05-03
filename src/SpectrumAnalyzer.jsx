@@ -32,39 +32,71 @@ export default function SpectrumAnalyzer({ onBack }) {
       const minFreq = 20;
       const maxFreq = sampleRate / 2;
 
-      // Draw Cyber Grid
-      ctx.strokeStyle = 'rgba(57, 255, 20, 0.05)';
-      ctx.lineWidth = 0.5;
-      for (let x = 0; x <= canvas.width; x += canvas.width / 12) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y <= canvas.height; y += canvas.height / 8) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-      }
+    // Grid System - Fixed visibility and alignment
+    ctx.strokeStyle = 'rgba(57, 255, 20, 0.15)';
+    ctx.lineWidth = 1;
+    const gridFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+    gridFreqs.forEach(f => {
+        const x = canvas.width * (Math.log(f / minFreq) / Math.log(maxFreq / minFreq));
+        if (x >= 0 && x <= canvas.width) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+    });
+    
+    // Horizontal lines (dB levels approx)
+    for (let y = 0; y <= canvas.height; y += canvas.height / 5) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
 
-      for (let i = 0; i < canvas.width; i++) {
+    let maxVal = -1;
+    let maxFreqHz = 0;
+    let maxX = 0;
+
+    for (let i = 0; i < canvas.width; i++) {
         const freq = minFreq * Math.pow(maxFreq / minFreq, i / canvas.width);
         const bin = (freq * analyser.current.fftSize) / sampleRate;
 
         const b0 = Math.floor(bin);
         const b1 = Math.min(b0 + 1, bufferLength - 1);
         const frac = bin - b0;
-        const val = dataArray[b0] * (1 - frac) + dataArray[b1] * frac;
+        let val = dataArray[b0] * (1 - frac) + dataArray[b1] * frac;
 
-        const barHeight = Math.pow(val / 255, 1.4) * (canvas.height - 80);
+        // Compensación Científica: Muchos micros móviles tienen un boost artificial en graves
+        // o capturan mucho ruido de manejo (handling noise). Aplicamos un filtro de inclinación leve
+        // para normalizar la visualización RTA.
+        const tiltCompensation = Math.max(0, 1 - Math.log10(freq / 20) / Math.log10(20000 / 20));
+        val = val * (1 - tiltCompensation * 0.3); // Reducción sutil de ruido de fondo en graves
 
-        // Vostok Cyber Gradient (Cyan to Lime)
+        const barHeight = Math.pow(val / 255, 1.4) * (canvas.height - 100);
+
         const hue = 180 + (i / canvas.width) * 60;
         ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
         ctx.fillRect(i, canvas.height - barHeight - 40, 1, barHeight);
 
         if (val > peakRef.current[i]) peakRef.current[i] = val;
-        else peakRef.current[i] -= 0.6;
+        else peakRef.current[i] -= 0.5;
 
-        const peakHeight = Math.pow(peakRef.current[i] / 255, 1.4) * (canvas.height - 80);
+        const peakHeight = Math.pow(peakRef.current[i] / 255, 1.4) * (canvas.height - 100);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(i, canvas.height - peakHeight - 42, 1, 1.5);
-      }
+
+        if (val > maxVal) {
+            maxVal = val;
+            maxFreqHz = freq;
+            maxX = i;
+        }
+    }
+
+    // RTA Peak Label
+    if (maxVal > 50) {
+        ctx.fillStyle = '#39FF14';
+        ctx.font = 'bold 12px monospace';
+        const label = `${Math.round(maxFreqHz)}Hz`;
+        ctx.fillText(label, Math.min(canvas.width - 50, Math.max(10, maxX - 20)), canvas.height - (Math.pow(maxVal/255, 1.4) * (canvas.height-100)) - 55);
+    }
 
       if (waterfallCanvasRef.current) {
         const wCanvas = waterfallCanvasRef.current;
@@ -135,11 +167,19 @@ export default function SpectrumAnalyzer({ onBack }) {
       <div className="flex-1 flex flex-col gap-4 min-h-0">
         <div className="flex-1 relative border border-white/10 rounded-[2rem] overflow-hidden bg-black shadow-2xl">
             <canvas ref={canvasRef} width="1000" height="400" className="w-full h-full object-cover" />
-            <div className="absolute bottom-4 left-6 flex gap-12 text-[8px] font-black text-slate-600 uppercase tracking-[0.2em] pointer-events-none">
-                <span>20Hz</span>
-                <span>200Hz</span>
-                <span>2kHz</span>
-                <span>20kHz</span>
+            
+            {/* Etiquetas de frecuencia alineadas logarítmicamente */}
+            <div className="absolute bottom-4 left-0 right-0 px-6 flex justify-between pointer-events-none">
+                {[20, 100, 500, 1000, 5000, 20000].map(f => {
+                    const minFreq = 20;
+                    const maxFreq = 22050; // aproximado sampleRate/2
+                    const x = (Math.log(f / minFreq) / Math.log(maxFreq / minFreq)) * 100;
+                    return (
+                        <span key={f} className="text-[8px] font-black text-slate-600 uppercase tracking-[0.1em] absolute" style={{ left: `${x}%`, transform: 'translateX(-50%)' }}>
+                            {f >= 1000 ? `${f/1000}k` : f}
+                        </span>
+                    );
+                })}
             </div>
         </div>
 
