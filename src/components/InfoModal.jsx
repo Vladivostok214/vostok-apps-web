@@ -116,7 +116,7 @@ const InfoModal = ({ isOpen, onClose, type }) => {
             
             <button 
               onClick={onClose}
-              className="absolute top-6 right-6 p-2 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 hover:bg-[#39FF14]/20 transition-colors z-10"
+              className="absolute top-6 right-6 p-2 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 hover:bg-[#39FF14]/20 transition-colors z-50 cursor-pointer"
             >
               <X className="w-5 h-5 text-[#39FF14]" />
             </button>
