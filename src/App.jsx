@@ -703,7 +703,8 @@ function ContactModal({ isOpen, onClose }) {
     const { error } = await supabase
       .from('messages')
       .insert([{ 
-        content: `Remitente: ${email.trim()}\n\n${message.trim()}`, 
+        user_mail: email.trim(),
+        content: message.trim(), 
         created_at: new Date() 
       }]);
 
