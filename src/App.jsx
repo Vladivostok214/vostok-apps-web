@@ -252,7 +252,7 @@ const TUNING_PRESETS = {
     { label: '2B', midi: 59 },
     { label: '1E', midi: 64 },
   ],
-  DROPPED_D: [
+  DROP_D: [
     { label: '6D', midi: 38 },
     { label: '5A', midi: 45 },
     { label: '4D', midi: 50 },
@@ -260,13 +260,29 @@ const TUNING_PRESETS = {
     { label: '2B', midi: 59 },
     { label: '1E', midi: 64 },
   ],
-  VERDI: [
-    { label: '6E', midi: 40 },
-    { label: '5A', midi: 45 },
+  OPEN_G: [
+    { label: '6D', midi: 38 },
+    { label: '5G', midi: 43 },
     { label: '4D', midi: 50 },
     { label: '3G', midi: 55 },
     { label: '2B', midi: 59 },
-    { label: '1E', midi: 64 },
+    { label: '1D', midi: 62 },
+  ],
+  DADGAD: [
+    { label: '6D', midi: 38 },
+    { label: '5A', midi: 45 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2A', midi: 57 },
+    { label: '1D', midi: 62 },
+  ],
+  HALF_STEP_DOWN: [
+    { label: '6Eb', midi: 39 },
+    { label: '5Ab', midi: 44 },
+    { label: '4Db', midi: 49 },
+    { label: '3Gb', midi: 54 },
+    { label: '2Bb', midi: 58 },
+    { label: '1Eb', midi: 63 },
   ]
 };
 
@@ -320,7 +336,7 @@ function VostokTuner({ onBack }) {
       const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
 
       if (rmsDb < -45) {
-        setSignalStatus('WAITING_SIGNAL');
+        setSignalStatus('SYS_IDLE');
         setCents(prev => prev * 0.8); // Suavizado al centro
         setDetectedString(null);
         freqHistoryRef.current = [];
@@ -610,19 +626,38 @@ function VostokTuner({ onBack }) {
                 {INSTRUMENTS.map(inst => {
                   const Icon = inst.icon;
                   return (
-                    <button 
-                      key={inst.id} 
-                      onClick={() => { 
-                        trackEvent('instrument_select', { instrument: inst.id });
-                        setSelectedInstrument(inst.id); 
-                        setActivePanel('center'); 
-                      }} 
-                      className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
-                    >
-                      <Icon className={`w-5 h-5 relative z-10 ${selectedInstrument === inst.id ? 'text-[#39FF14]' : ''}`} />
-                      <span className="font-bold font-mono text-sm uppercase tracking-widest relative z-10">{inst.name}</span>
-                      {selectedInstrument === inst.id && <Check className="w-4 h-4 ml-auto text-[#39FF14] relative z-10" />}
-                    </button>
+                    <div key={inst.id} className="flex flex-col gap-2">
+                      <button 
+                        onClick={() => { 
+                          trackEvent('instrument_select', { instrument: inst.id });
+                          setSelectedInstrument(inst.id); 
+                          if (inst.id !== 'guitar') setActivePanel('center'); 
+                        }} 
+                        className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
+                      >
+                        <Icon className={`w-5 h-5 relative z-10 ${selectedInstrument === inst.id ? 'text-[#39FF14]' : ''}`} />
+                        <span className="font-bold font-mono text-sm uppercase tracking-widest relative z-10">{inst.name}</span>
+                        {selectedInstrument === inst.id && <Check className="w-4 h-4 ml-auto text-[#39FF14] relative z-10" />}
+                      </button>
+                      
+                      {selectedInstrument === 'guitar' && inst.id === 'guitar' && (
+                        <div className="pl-4 border-l-2 border-[#39FF14]/30 ml-6 my-2 flex flex-col gap-2">
+                          {Object.keys(TUNING_PRESETS).map(preset => (
+                            <button 
+                              key={preset}
+                              onClick={() => {
+                                setTuningPreset(preset);
+                                trackEvent('preset_change', { preset });
+                                setActivePanel('center');
+                              }}
+                              className={`p-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest text-left font-mono ${tuningPreset === preset ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-[#39FF14]' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
+                            >
+                              {preset.replace(/_/g, ' ')}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
