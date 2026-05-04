@@ -23,7 +23,7 @@ const autoCorrelate = (buf, sampleRate) => {
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
   
-  if (rms < 0.01) return -1;
+  if (rms < 0.05) return -1; // -26dB minimum for autocorrelation to run
 
   let r1 = 0, r2 = SIZE - 1, thres = 0.2;
   for (let i = 0; i < SIZE / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
@@ -334,54 +334,53 @@ function VostokTuner({ onBack }) {
       }
       rms = Math.sqrt(rms / audioBufferRef.current.length);
       const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
+      
+      const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
 
-      if (rmsDb < -45) {
+      if (rmsDb < -20 || freq === -1) {
         setSignalStatus('SYS_IDLE');
         setCents(prev => prev * 0.8); // Suavizado al centro
+        setPitch(null);
         setDetectedString(null);
         freqHistoryRef.current = [];
       } else {
         setSignalStatus('ACTIVE');
-        const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
+        // Filtro Media Móvil 5 pasos
+        freqHistoryRef.current.push(freq);
+        if (freqHistoryRef.current.length > 5) freqHistoryRef.current.shift();
         
-        if (freq !== -1) {
-          // Filtro Media Móvil 5 pasos
-          freqHistoryRef.current.push(freq);
-          if (freqHistoryRef.current.length > 5) freqHistoryRef.current.shift();
+        const avgFreq = freqHistoryRef.current.reduce((a, b) => a + b, 0) / freqHistoryRef.current.length;
+        const midiFloat = 12 * (Math.log(avgFreq / refPitchRef.current) / Math.log(2)) + 69;
+        
+        // Detección inteligente de cuerda
+        let target = Math.round(midiFloat);
+        if (selectedInstrumentRef.current === 'guitar') {
+          const currentPreset = tuningPresetRef.current;
+          const matrix = TUNING_PRESETS[currentPreset] || TUNING_PRESETS.STANDARD;
           
-          const avgFreq = freqHistoryRef.current.reduce((a, b) => a + b, 0) / freqHistoryRef.current.length;
-          const midiFloat = 12 * (Math.log(avgFreq / refPitchRef.current) / Math.log(2)) + 69;
-          
-          // Detección inteligente de cuerda
-          let target = Math.round(midiFloat);
-          if (selectedInstrumentRef.current === 'guitar') {
-            const currentPreset = tuningPresetRef.current;
-            const matrix = TUNING_PRESETS[currentPreset] || TUNING_PRESETS.STANDARD;
-            
-            let minDiff = Infinity;
-            let closestString = null;
-            for (const s of matrix) {
-              const diff = Math.abs(midiFloat - s.midi);
-              if (diff < minDiff) {
-                minDiff = diff;
-                closestString = s;
-              }
+          let minDiff = Infinity;
+          let closestString = null;
+          for (const s of matrix) {
+            const diff = Math.abs(midiFloat - s.midi);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestString = s;
             }
+          }
 
-            if (minDiff < 1) { // Menos de 100 cents de desviación
-              target = closestString.midi;
-              setDetectedString(closestString.label);
-            } else {
-              setDetectedString(null);
-            }
+          if (minDiff < 1) { // Menos de 100 cents de desviación
+            target = closestString.midi;
+            setDetectedString(closestString.label);
           } else {
             setDetectedString(null);
           }
-
-          setCents((midiFloat - target) * 100);
-          setPitch(avgFreq);
-          setTargetMidi(target);
+        } else {
+          setDetectedString(null);
         }
+
+        setCents((midiFloat - target) * 100);
+        setPitch(avgFreq);
+        setTargetMidi(target);
       }
       
       rafIdRef.current = requestAnimationFrame(loop);
@@ -424,6 +423,14 @@ function VostokTuner({ onBack }) {
       setIsListening(true);
       requestWakeLock();
       updateLoop();
+
+      posthog.capture('tuner_engine_active', {
+        $groups: { HARDWARE_SPEC: 'vostok_core_v1' },
+        sample_rate: audioContextRef.current.sampleRate,
+        base_latency_ms: audioContextRef.current.baseLatency ? audioContextRef.current.baseLatency * 1000 : 0,
+        is_mobile: /iPhone|Android/i.test(navigator.userAgent),
+        engine_status: 'STABLE_DSP'
+      });
     } catch (e) { 
       console.error(e);
       alert("Se requiere acceso al micrófono para el afinador.");
@@ -565,30 +572,25 @@ function VostokTuner({ onBack }) {
       </div>
 
       <main className="flex-1 flex flex-col items-center justify-center z-[130] w-full px-6 -mt-8 relative">
-        {signalStatus === 'WAITING_SIGNAL' ? (
+        {signalStatus === 'SYS_IDLE' ? (
            <div className="flex flex-col items-center justify-center h-[250px]">
-             <div className="text-[#39FF14] font-mono text-sm tracking-[0.3em] opacity-50 animate-pulse border border-[#39FF14]/20 bg-[#39FF14]/5 px-6 py-2 rounded-full">WAITING_SIGNAL</div>
+             <div className="text-[#39FF14] font-mono text-sm tracking-[0.3em] opacity-50 animate-pulse border border-[#39FF14]/20 bg-[#39FF14]/5 px-6 py-2 rounded-full">SYS_IDLE</div>
            </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[250px] w-full">
-            {/* Tension Guide */}
-            <div className="h-8 flex items-center justify-center mb-2">
-              {isTuned ? (
-                <div className="w-full max-w-[200px] h-1 bg-[#39FF14] shadow-[0_0_15px_#39FF14] rounded-full" />
-              ) : cents < -2 ? (
-                <div className="flex items-center gap-2 text-[#06b6d4] font-mono text-[10px] font-black tracking-widest uppercase animate-pulse">
-                  <span>▲</span> TENSION: INCREASE
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-[#06b6d4] font-mono text-[10px] font-black tracking-widest uppercase animate-pulse">
-                  <span>▼</span> TENSION: RELEASE
-                </div>
-              )}
-            </div>
-            
-            {/* Note Display */}
-            <div className="text-[9rem] md:text-[11rem] font-mono font-black leading-none tracking-tighter flex items-start text-white transition-all select-none will-change-transform">
-              {note.n}<span className="text-3xl md:text-4xl font-black text-[#39FF14] opacity-50 mt-8 md:mt-10 ml-2">{note.o}</span>
+            {/* Note Display & Tension Guide Chevrons */}
+            <div className="flex items-center justify-center gap-6 md:gap-12 relative w-full h-[180px] md:h-[220px]">
+              <div className={`transition-all duration-300 flex items-center justify-center h-full ${pitch && !isTuned && cents < -2 ? 'text-[#06b6d4] opacity-100 drop-shadow-[0_0_15px_#06b6d4]' : 'text-white/10 opacity-20'}`}>
+                <div className="text-5xl md:text-6xl font-black">▲</div>
+              </div>
+              
+              <div className={`text-[9rem] md:text-[11rem] font-mono font-black leading-none tracking-tighter flex items-start transition-all select-none will-change-transform ${isTuned ? 'text-[#39FF14] drop-shadow-[0_0_20px_#39FF14]' : 'text-white'}`}>
+                {note.n}<span className="text-3xl md:text-4xl font-black opacity-50 mt-8 md:mt-10 ml-2">{note.o}</span>
+              </div>
+              
+              <div className={`transition-all duration-300 flex items-center justify-center h-full ${pitch && !isTuned && cents > 2 ? 'text-[#06b6d4] opacity-100 drop-shadow-[0_0_15px_#06b6d4]' : 'text-white/10 opacity-20'}`}>
+                <div className="text-5xl md:text-6xl font-black">▼</div>
+              </div>
             </div>
             
             {/* String Detection Label */}
@@ -677,25 +679,6 @@ function VostokTuner({ onBack }) {
                 <button onClick={() => setActivePanel('center')} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X className="w-6 h-6 text-slate-500" /></button>
               </div>
               <div className="space-y-10 overflow-y-auto pr-2 custom-scrollbar">
-                <section>
-                  <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Lab-Presets</label>
-                  <div className="flex flex-col gap-2">
-                    {Object.keys(TUNING_PRESETS).map(preset => (
-                      <button 
-                        key={preset}
-                        onClick={() => {
-                          setTuningPreset(preset);
-                          if (preset === 'VERDI') setRefPitch(432);
-                          else setRefPitch(440);
-                          trackEvent('preset_change', { preset });
-                        }}
-                        className={`p-4 rounded-2xl border transition-all text-xs font-black uppercase tracking-widest text-left font-mono ${tuningPreset === preset ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-[#39FF14]' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
-                      >
-                        {preset.replace('_', ' ')}
-                      </button>
-                    ))}
-                  </div>
-                </section>
                 <section>
                   <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Referencia A4</label>
                   <div className="flex items-center justify-between p-2 bg-white/5 rounded-full border border-white/10">
