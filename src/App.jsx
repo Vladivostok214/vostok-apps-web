@@ -8,6 +8,7 @@ import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
 import Footer from './components/Footer';
+import InfoModal from './components/InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
 
@@ -808,7 +809,6 @@ export default function App() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoType, setInfoType] = useState('faq');
-  const [copied, setCopied] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
   const isIOS = typeof window !== 'undefined' && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
@@ -904,10 +904,10 @@ export default function App() {
           )}
           <button 
             onClick={handleContact} 
-            aria-label={copied ? 'Email copiado' : 'Contactar con Vostok Labs'}
+            aria-label={'Contactar con Vostok Labs'}
             className="px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
           >
-            {copied ? '¡Copiado!' : 'Contacto'}
+            Contacto
           </button>
         </div>
       </nav>

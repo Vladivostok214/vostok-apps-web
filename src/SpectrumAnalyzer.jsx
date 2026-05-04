@@ -233,7 +233,7 @@ export default function SpectrumAnalyzer({ onBack }) {
       resize();
       setIsRunning(true);
       draw();
-    } catch (e) {
+    } catch {
       alert("Acceso denegado al hardware.");
     }
   };

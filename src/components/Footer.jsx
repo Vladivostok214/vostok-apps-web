@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Footer = ({ onContactClick, onInfoClick }) => {
   const handleLinkClick = (e, type) => {
     e.preventDefault();
