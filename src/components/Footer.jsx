@@ -1,6 +1,11 @@
 import React from 'react';
 
-const Footer = ({ onContactClick }) => {
+const Footer = ({ onContactClick, onInfoClick }) => {
+  const handleLinkClick = (e, type) => {
+    e.preventDefault();
+    if (onInfoClick) onInfoClick(type);
+  };
+
   return (
     <footer className="bg-[#010101] border border-white/10 backdrop-blur-md py-16 px-8 z-10 relative mt-24 mx-4 md:mx-8 mb-8 rounded-[2.5rem]">
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12">
@@ -11,9 +16,9 @@ const Footer = ({ onContactClick }) => {
             AYUDA
           </h4>
           <ul className="flex flex-col gap-3 font-sans text-slate-400 text-sm">
-            <li><a href="#" className="hover:text-white transition-colors">Guía de Inicio Rápido</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Manual de Calibración</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Preguntas Frecuentes (FAQ)</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'quickstart')} className="hover:text-white transition-colors">Guía de Inicio Rápido</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'calibration')} className="hover:text-white transition-colors">Manual de Calibración</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'faq')} className="hover:text-white transition-colors">Preguntas Frecuentes (FAQ)</a></li>
           </ul>
         </div>
 
@@ -25,6 +30,12 @@ const Footer = ({ onContactClick }) => {
           <p className="font-sans text-slate-400 text-sm leading-relaxed">
             Vostok Labs es un ecosistema de herramientas DSP. Nuestra misión es democratizar el análisis acústico profesional con interfaces accesibles y precisas.
           </p>
+          <button 
+            onClick={(e) => handleLinkClick(e, 'mission')}
+            className="text-left font-sans text-slate-400 hover:text-[#39FF14] transition-colors text-sm font-bold w-max"
+          >
+            Leer Misión Completa
+          </button>
         </div>
 
         {/* COL 3: Legal */}
@@ -33,9 +44,9 @@ const Footer = ({ onContactClick }) => {
             LEGAL
           </h4>
           <ul className="flex flex-col gap-3 font-sans text-slate-400 text-sm">
-            <li><a href="#" className="hover:text-white transition-colors">Política de Privacidad Técnica</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Términos de Uso</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Normas Legales</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'privacy')} className="hover:text-white transition-colors">Política de Privacidad Técnica</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'terms')} className="hover:text-white transition-colors">Términos de Uso</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'legal')} className="hover:text-white transition-colors">Normas Legales</a></li>
           </ul>
         </div>
 

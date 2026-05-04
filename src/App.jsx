@@ -806,6 +806,8 @@ function ContactModal({ isOpen, onClose }) {
 export default function App() {
   const [view, setView] = useState('home');
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [infoType, setInfoType] = useState('faq');
   const [copied, setCopied] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
@@ -818,6 +820,12 @@ export default function App() {
   const handleContact = useCallback(() => {
     trackEvent('contact_click');
     setShowContactModal(true);
+  }, []);
+
+  const handleInfoClick = useCallback((type) => {
+    trackEvent('info_modal_open', { type });
+    setInfoType(type);
+    setShowInfoModal(true);
   }, []);
 
   const handleSetView = (v) => {
@@ -842,6 +850,7 @@ export default function App() {
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
 
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
+      <InfoModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} type={infoType} />
 
       {/* Guía de Instalación iOS Estilizada */}
       <AnimatePresence>
@@ -1030,7 +1039,7 @@ export default function App() {
         </div>
       </section>
 
-      <Footer onContactClick={handleContact} />
+      <Footer onContactClick={handleContact} onInfoClick={handleInfoClick} />
     </div>
   );
 }
