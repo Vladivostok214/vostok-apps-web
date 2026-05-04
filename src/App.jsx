@@ -702,7 +702,10 @@ function ContactModal({ isOpen, onClose }) {
     setStatus('sending');
     const { error } = await supabase
       .from('messages')
-      .insert([{ email: email.trim(), content: message.trim(), created_at: new Date() }]);
+      .insert([{ 
+        content: `Remitente: ${email.trim()}\n\n${message.trim()}`, 
+        created_at: new Date() 
+      }]);
 
     if (error) {
       console.error(error);
