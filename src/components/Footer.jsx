@@ -15,7 +15,7 @@ const Footer = ({ onContactClick, onInfoClick }) => {
           </h4>
           <ul className="flex flex-col gap-3 font-sans text-slate-400 text-sm">
             <li><a href="#" onClick={(e) => handleLinkClick(e, 'quickstart')} className="hover:text-white transition-colors">Guía de Inicio Rápido</a></li>
-            <li><a href="#" onClick={(e) => handleLinkClick(e, 'calibration')} className="hover:text-white transition-colors">Manual de Calibración</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'CALIBRATION_MANUAL')} className="hover:text-white transition-colors">Manual de Calibración</a></li>
             <li><a href="#" onClick={(e) => handleLinkClick(e, 'faq')} className="hover:text-white transition-colors">Preguntas Frecuentes (FAQ)</a></li>
           </ul>
         </div>
@@ -43,8 +43,8 @@ const Footer = ({ onContactClick, onInfoClick }) => {
           </h4>
           <ul className="flex flex-col gap-3 font-sans text-slate-400 text-sm">
             <li><a href="#" onClick={(e) => handleLinkClick(e, 'privacy')} className="hover:text-white transition-colors">Política de Privacidad Técnica</a></li>
-            <li><a href="#" onClick={(e) => handleLinkClick(e, 'terms')} className="hover:text-white transition-colors">Términos de Uso</a></li>
-            <li><a href="#" onClick={(e) => handleLinkClick(e, 'legal')} className="hover:text-white transition-colors">Normas Legales</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'TERMS_OF_USE')} className="hover:text-white transition-colors">Términos de Uso</a></li>
+            <li><a href="#" onClick={(e) => handleLinkClick(e, 'LEGAL_RULES')} className="hover:text-white transition-colors">Normas Legales</a></li>
           </ul>
         </div>
 

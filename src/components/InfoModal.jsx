@@ -32,17 +32,17 @@ const CONTENT_MAP = {
       </div>
     )
   },
-  calibration: {
+  CALIBRATION_MANUAL: {
     title: 'Manual de Calibración',
     content: (
       <div className="space-y-6">
         <div>
-          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Aplanando la Curva</h5>
-          <p>Utilice una fuente de ruido rosa (Pink Noise) confiable. Observe la gráfica en el módulo Spectrum (Modo HD-RTA). Identifique las frecuencias resonantes (picos) o cancelaciones (valles) introducidas por su sala.</p>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Posicionamiento del Móvil</h5>
+          <p className="text-slate-400">Para mediciones precisas, apunte el micrófono omnidireccional de su móvil directamente a la fuente (0 grados) o al techo (90 grados) para evaluar la respuesta acústica de la sala.</p>
         </div>
         <div>
-          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Ajuste de Referencia</h5>
-          <p>Con un ecualizador paramétrico en su cadena de salida, aplique cortes quirúgicos (EQ sustractiva) en las frecuencias resonantes hasta que la representación espectral tienda a una pendiente suave y controlada.</p>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Bypass de Hardware</h5>
+          <p className="text-slate-400">El audio se captura en estado crudo evadiendo el pre-procesamiento nativo del sistema. Los cálculos de DSP se ejecutan localmente para asegurar la máxima fidelidad sin latencia artificial.</p>
         </div>
       </div>
     )
@@ -77,17 +77,32 @@ const CONTENT_MAP = {
       </div>
     )
   },
-  terms: {
-    title: 'Términos Legales',
+  TERMS_OF_USE: {
+    title: 'Términos de Uso',
     content: (
       <div className="space-y-6">
         <div>
-          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Uso Referencial</h5>
-          <p>Las mediciones generadas por Vostok Labs (Tuner, SPL, Spectrum) están diseñadas para referencia técnica y artística. No sustituyen instrumentos médicos de audiometría ni dispositivos de medición legal homologados.</p>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Responsabilidad Técnica</h5>
+          <p className="text-slate-400">Las mediciones generadas por Vostok Labs están diseñadas para referencia técnica y artística. No sustituyen instrumentos médicos de audiometría ni dispositivos de medición legal homologados.</p>
         </div>
         <div>
-          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Cómputo Intensivo</h5>
-          <p>El procesamiento de Transformadas Rápidas de Fourier (FFT) y algoritmos de correlación requieren recursos de CPU de su dispositivo. El uso prolongado podría aumentar la temperatura de equipos móviles.</p>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Uso Intensivo de Hardware</h5>
+          <p className="text-slate-400">El procesamiento de Transformadas Rápidas de Fourier (FFT) y los algoritmos de correlación requieren recursos de CPU de su dispositivo. El uso prolongado podría aumentar la temperatura de equipos móviles.</p>
+        </div>
+      </div>
+    )
+  },
+  LEGAL_RULES: {
+    title: 'Normas Legales',
+    content: (
+      <div className="space-y-6">
+        <div>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Privacidad de Datos Técnica</h5>
+          <p className="text-slate-400">Solo capturamos telemetría técnica anónima (como el Sample Rate y la Base Latency) para optimizar el motor DSP. El flujo de audio crudo nunca es grabado, transmitido ni enviado a servidores externos.</p>
+        </div>
+        <div>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Modo Cookieless</h5>
+          <p className="text-slate-400">Utilizamos el modo 'Cookieless server hash' de PostHog, garantizando un entorno de ejecución Zero-Footprint estricto, sin utilizar cookies de seguimiento ni rastreadores inter-sesión.</p>
         </div>
       </div>
     )

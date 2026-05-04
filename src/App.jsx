@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
-  Smartphone, LayoutGrid, Plus, Minus, BellRing, ArrowLeft, 
+  Smartphone, LayoutGrid, Plus, Minus, ArrowLeft, 
   Music, Zap, Send, ChevronDown, Volume2
 } from 'lucide-react';
 import TempoSense from './TempoSense';
