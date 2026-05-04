@@ -682,8 +682,130 @@ function SoundScienceSection() {
   );
 }
 
+function ContactModal({ isOpen, onClose }) {
+  const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle'); // 'idle' | 'sending' | 'success' | 'error'
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!message.trim() || !email.trim()) return;
+    
+    // Si supabase no está configurado, simulamos el envío o mostramos error de conexión.
+    if (!supabase) {
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 3000);
+      return;
+    }
+
+    setStatus('sending');
+    const { error } = await supabase
+      .from('messages')
+      .insert([{ email: email.trim(), content: message.trim(), created_at: new Date() }]);
+
+    if (error) {
+      console.error(error);
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 3000);
+    } else {
+      trackEvent('message_sent', { length: message.length });
+      setStatus('success');
+      setMessage('');
+      setEmail('');
+      setTimeout(() => {
+        setStatus('idle');
+        onClose();
+      }, 3000);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[500] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4"
+        >
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="w-full max-w-md bg-[#080808] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative"
+          >
+            <button 
+              onClick={onClose}
+              className="absolute top-6 right-6 p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            >
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+            
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 flex items-center justify-center">
+                <Send className="w-5 h-5 text-[#39FF14]" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tight text-white">Buzón de Contacto</h3>
+                <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Transmisión Directa</p>
+              </div>
+            </div>
+
+            {status === 'success' ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-48 flex flex-col items-center justify-center text-center">
+                <Check className="w-12 h-12 text-[#39FF14] mb-4" />
+                <p className="text-sm font-bold text-slate-300">Mensaje transmitido con éxito al equipo de Vostok Labs.</p>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-mono text-[#39FF14] uppercase tracking-widest pl-2 border-l-2 border-[#39FF14]">ID Operador (Email)</label>
+                  <input 
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="tucorreo@ejemplo.com"
+                    className="w-full bg-[#030303] border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-[#39FF14]/40 transition-colors"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-mono text-[#39FF14] uppercase tracking-widest pl-2 border-l-2 border-[#39FF14]">Reporte / Mensaje</label>
+                  <textarea 
+                    required
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Escribe aquí tu observación o reporte..."
+                    className="w-full h-32 bg-[#030303] border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-[#39FF14]/40 transition-colors resize-none"
+                  />
+                </div>
+                
+                {!supabase && status === 'error' && (
+                  <p className="text-xs text-red-500 font-bold text-center">Error: VITE_SUPABASE_URL no configurado.</p>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={status === 'sending' || !message.trim() || !email.trim()}
+                  className="mt-2 h-14 flex items-center justify-center gap-3 border border-[#39FF14]/20 rounded-full bg-[#39FF14]/10 hover:bg-[#39FF14]/20 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="text-[10px] font-black text-[#39FF14] uppercase tracking-[0.4em]">
+                    {status === 'sending' ? 'Tansmitiendo...' : 'Enviar Reporte'}
+                  </span>
+                  <Send className="w-4 h-4 text-[#39FF14] group-hover:translate-x-1 transition-transform" />
+                </button>
+              </form>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function App() {
   const [view, setView] = useState('home');
+  const [showContactModal, setShowContactModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
@@ -694,13 +816,8 @@ export default function App() {
   }, []);
 
   const handleContact = useCallback(() => {
-    const email = 'contacto@vostoklabs.audio';
     trackEvent('contact_click');
-    navigator.clipboard.writeText(email).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' });
-    });
+    setShowContactModal(true);
   }, []);
 
   const handleSetView = (v) => {
@@ -723,6 +840,8 @@ export default function App() {
       {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
       {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
+
+      <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
 
       {/* Guía de Instalación iOS Estilizada */}
       <AnimatePresence>
@@ -911,7 +1030,7 @@ export default function App() {
         </div>
       </section>
 
-      <Footer />
+      <Footer onContactClick={handleContact} />
     </div>
   );
 }
