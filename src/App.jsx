@@ -11,6 +11,7 @@ import Footer from './components/Footer';
 import InfoModal from './components/InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
+import posthog from 'posthog-js';
 
 // --- OPTIMIZACIÓN DE PROCESAMIENTO ---
 // Pre-asignamos memoria para evitar Garbage Collection en el loop de audio
@@ -23,7 +24,7 @@ const autoCorrelate = (buf, sampleRate) => {
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
   
-  if (rms < 0.05) return -1; // -26dB minimum for autocorrelation to run
+  if (rms < 0.005) return -1; // -46dB minimum for autocorrelation to run
 
   let r1 = 0, r2 = SIZE - 1, thres = 0.2;
   for (let i = 0; i < SIZE / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
@@ -145,6 +146,49 @@ const PROTAGONISTAS = [
   }
 ];
 
+const TUNING_PRESETS = {
+  STANDARD: [
+    { label: '6E', midi: 40 },
+    { label: '5A', midi: 45 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2B', midi: 59 },
+    { label: '1E', midi: 64 },
+  ],
+  DROP_D: [
+    { label: '6D', midi: 38 },
+    { label: '5A', midi: 45 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2B', midi: 59 },
+    { label: '1E', midi: 64 },
+  ],
+  OPEN_G: [
+    { label: '6D', midi: 38 },
+    { label: '5G', midi: 43 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2B', midi: 59 },
+    { label: '1D', midi: 62 },
+  ],
+  DADGAD: [
+    { label: '6D', midi: 38 },
+    { label: '5A', midi: 45 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2A', midi: 57 },
+    { label: '1D', midi: 62 },
+  ],
+  HALF_STEP_DOWN: [
+    { label: '6Eb', midi: 39 },
+    { label: '5Ab', midi: 44 },
+    { label: '4Db', midi: 49 },
+    { label: '3Gb', midi: 54 },
+    { label: '2Bb', midi: 58 },
+    { label: '1Eb', midi: 63 },
+  ]
+};
+
 // --- HOOKS PERSONALIZADOS ---
 const useWakeLock = () => {
   const wakeLock = useRef(null);
@@ -243,50 +287,7 @@ const VostokLogo = ({ className = "w-10 h-10" }) => (
   </div>
 );
 
-const TUNING_PRESETS = {
-  STANDARD: [
-    { label: '6E', midi: 40 },
-    { label: '5A', midi: 45 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2B', midi: 59 },
-    { label: '1E', midi: 64 },
-  ],
-  DROP_D: [
-    { label: '6D', midi: 38 },
-    { label: '5A', midi: 45 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2B', midi: 59 },
-    { label: '1E', midi: 64 },
-  ],
-  OPEN_G: [
-    { label: '6D', midi: 38 },
-    { label: '5G', midi: 43 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2B', midi: 59 },
-    { label: '1D', midi: 62 },
-  ],
-  DADGAD: [
-    { label: '6D', midi: 38 },
-    { label: '5A', midi: 45 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2A', midi: 57 },
-    { label: '1D', midi: 62 },
-  ],
-  HALF_STEP_DOWN: [
-    { label: '6Eb', midi: 39 },
-    { label: '5Ab', midi: 44 },
-    { label: '4Db', midi: 49 },
-    { label: '3Gb', midi: 54 },
-    { label: '2Bb', midi: 58 },
-    { label: '1Eb', midi: 63 },
-  ]
-};
-
-// --- COMPONENTE AFINADOR ---
+// --- COMPONENTES DE AFINADOR ---
 function VostokTuner({ onBack }) {
   const [isListening, setIsListening] = useState(false);
   const [pitch, setPitch] = useState(null);
@@ -298,7 +299,7 @@ function VostokTuner({ onBack }) {
   const [smoothValue, setSmoothValue] = useState(70); 
   const [selectedInstrument, setSelectedInstrument] = useState('guitar');
   const [tuningPreset, setTuningPreset] = useState('STANDARD');
-  const [signalStatus, setSignalStatus] = useState('WAITING_SIGNAL');
+  const [signalStatus, setSignalStatus] = useState('SYS_IDLE');
   const [detectedString, setDetectedString] = useState(null);
 
   const audioContextRef = useRef(null);
@@ -337,7 +338,7 @@ function VostokTuner({ onBack }) {
       
       const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
 
-      if (rmsDb < -20 || freq === -1) {
+      if (rmsDb < -45 || freq === -1) {
         setSignalStatus('SYS_IDLE');
         setCents(prev => prev * 0.8); // Suavizado al centro
         setPitch(null);
@@ -572,13 +573,8 @@ function VostokTuner({ onBack }) {
       </div>
 
       <main className="flex-1 flex flex-col items-center justify-center z-[130] w-full px-6 -mt-8 relative">
-        {signalStatus === 'SYS_IDLE' ? (
-           <div className="flex flex-col items-center justify-center h-[250px]">
-             <div className="text-[#39FF14] font-mono text-sm tracking-[0.3em] opacity-50 animate-pulse border border-[#39FF14]/20 bg-[#39FF14]/5 px-6 py-2 rounded-full">SYS_IDLE</div>
-           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-[250px] w-full">
-            {/* Note Display & Tension Guide Chevrons */}
+        <div className={`flex flex-col items-center justify-center h-[250px] w-full transition-opacity duration-500 ${signalStatus === 'SYS_IDLE' ? 'opacity-20' : 'opacity-100'}`}>
+          {/* Note Display & Tension Guide Chevrons */}
             <div className="flex items-center justify-center gap-6 md:gap-12 relative w-full h-[180px] md:h-[220px]">
               <div className={`transition-all duration-300 flex items-center justify-center h-full ${pitch && !isTuned && cents < -2 ? 'text-[#06b6d4] opacity-100 drop-shadow-[0_0_15px_#06b6d4]' : 'text-white/10 opacity-20'}`}>
                 <div className="text-5xl md:text-6xl font-black">▲</div>
@@ -607,7 +603,6 @@ function VostokTuner({ onBack }) {
               {pitch ? `${cents > 0 ? '+' : ''}${Math.round(cents)} Cents` : "-- Cents"}
             </div>
           </div>
-        )}
       </main>
 
       <div className="h-[env(safe-area-inset-bottom)] w-full" />
