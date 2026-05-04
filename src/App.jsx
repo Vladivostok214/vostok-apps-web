@@ -243,6 +243,33 @@ const VostokLogo = ({ className = "w-10 h-10" }) => (
   </div>
 );
 
+const TUNING_PRESETS = {
+  STANDARD: [
+    { label: '6E', midi: 40 },
+    { label: '5A', midi: 45 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2B', midi: 59 },
+    { label: '1E', midi: 64 },
+  ],
+  DROPPED_D: [
+    { label: '6D', midi: 38 },
+    { label: '5A', midi: 45 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2B', midi: 59 },
+    { label: '1E', midi: 64 },
+  ],
+  VERDI: [
+    { label: '6E', midi: 40 },
+    { label: '5A', midi: 45 },
+    { label: '4D', midi: 50 },
+    { label: '3G', midi: 55 },
+    { label: '2B', midi: 59 },
+    { label: '1E', midi: 64 },
+  ]
+};
+
 // --- COMPONENTE AFINADOR ---
 function VostokTuner({ onBack }) {
   const [isListening, setIsListening] = useState(false);
@@ -253,7 +280,10 @@ function VostokTuner({ onBack }) {
   const [activePanel, setActivePanel] = useState('center');
   const [refPitch, setRefPitch] = useState(440);
   const [smoothValue, setSmoothValue] = useState(70); 
-  const [selectedInstrument, setSelectedInstrument] = useState('chromatic');
+  const [selectedInstrument, setSelectedInstrument] = useState('guitar');
+  const [tuningPreset, setTuningPreset] = useState('STANDARD');
+  const [signalStatus, setSignalStatus] = useState('WAITING_SIGNAL');
+  const [detectedString, setDetectedString] = useState(null);
 
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -262,11 +292,14 @@ function VostokTuner({ onBack }) {
   const audioBufferRef = useRef(null);
   const fileInputRef = useRef(null);
   const refPitchRef = useRef(refPitch);
+  const selectedInstrumentRef = useRef(selectedInstrument);
+  const tuningPresetRef = useRef(tuningPreset);
+  const freqHistoryRef = useRef([]);
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
 
-  useEffect(() => {
-    refPitchRef.current = refPitch;
-  }, [refPitch]);
+  useEffect(() => { refPitchRef.current = refPitch; }, [refPitch]);
+  useEffect(() => { selectedInstrumentRef.current = selectedInstrument; }, [selectedInstrument]);
+  useEffect(() => { tuningPresetRef.current = tuningPreset; }, [tuningPreset]);
 
   const updateLoop = useCallback(() => {
     function loop() {
@@ -277,14 +310,62 @@ function VostokTuner({ onBack }) {
       }
       
       analyserRef.current.getFloatTimeDomainData(audioBufferRef.current);
-      const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
       
-      if (freq !== -1) {
-        const midi = 12 * (Math.log(freq / refPitchRef.current) / Math.log(2)) + 69;
-        const target = Math.round(midi);
-        setCents((midi - target) * 100);
-        setPitch(freq);
-        setTargetMidi(target);
+      // RMS Calculation para estabilización (Anti-Noise Logic)
+      let rms = 0;
+      for (let i = 0; i < audioBufferRef.current.length; i++) {
+        rms += audioBufferRef.current[i] * audioBufferRef.current[i];
+      }
+      rms = Math.sqrt(rms / audioBufferRef.current.length);
+      const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
+
+      if (rmsDb < -45) {
+        setSignalStatus('WAITING_SIGNAL');
+        setCents(prev => prev * 0.8); // Suavizado al centro
+        setDetectedString(null);
+        freqHistoryRef.current = [];
+      } else {
+        setSignalStatus('ACTIVE');
+        const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
+        
+        if (freq !== -1) {
+          // Filtro Media Móvil 5 pasos
+          freqHistoryRef.current.push(freq);
+          if (freqHistoryRef.current.length > 5) freqHistoryRef.current.shift();
+          
+          const avgFreq = freqHistoryRef.current.reduce((a, b) => a + b, 0) / freqHistoryRef.current.length;
+          const midiFloat = 12 * (Math.log(avgFreq / refPitchRef.current) / Math.log(2)) + 69;
+          
+          // Detección inteligente de cuerda
+          let target = Math.round(midiFloat);
+          if (selectedInstrumentRef.current === 'guitar') {
+            const currentPreset = tuningPresetRef.current;
+            const matrix = TUNING_PRESETS[currentPreset] || TUNING_PRESETS.STANDARD;
+            
+            let minDiff = Infinity;
+            let closestString = null;
+            for (const s of matrix) {
+              const diff = Math.abs(midiFloat - s.midi);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closestString = s;
+              }
+            }
+
+            if (minDiff < 1) { // Menos de 100 cents de desviación
+              target = closestString.midi;
+              setDetectedString(closestString.label);
+            } else {
+              setDetectedString(null);
+            }
+          } else {
+            setDetectedString(null);
+          }
+
+          setCents((midiFloat - target) * 100);
+          setPitch(avgFreq);
+          setTargetMidi(target);
+        }
       }
       
       rafIdRef.current = requestAnimationFrame(loop);
@@ -400,27 +481,31 @@ function VostokTuner({ onBack }) {
   };
 
   const note = targetMidi ? { n: noteStrings[targetMidi % 12], o: Math.floor(targetMidi / 12) - 1 } : { n: "-", o: "" };
+  const isTuned = isListening && signalStatus === 'ACTIVE' && Math.abs(cents) <= 2;
 
   return (
-    <div className="fixed inset-0 bg-[#050505] z-[100] flex flex-col items-center overflow-hidden font-sans text-white">
-      {/* Dynamic Background Glow - Boosted for Vostok Labs depth */}
-      <div className={`absolute inset-0 opacity-40 blur-[120px] transition-colors duration-1000 will-change-[background-color] ${Math.abs(cents) < 5 && pitch ? 'bg-[#39FF14]' : 'bg-purple-600'}`} />
+    <div className={`fixed inset-0 bg-[#010101] z-[100] flex flex-col items-center overflow-hidden font-sans text-white transition-all duration-500 ${isTuned ? 'shadow-[inset_0_0_100px_rgba(57,255,20,0.15)] border-4 border-[#39FF14]/20 rounded-[2.5rem]' : ''}`}>
+      {/* Dynamic Background Glow - Noir-Tech */}
+      <div className={`absolute inset-0 opacity-40 blur-[120px] transition-colors duration-1000 pointer-events-none will-change-[background-color] ${Math.abs(cents) < 5 && pitch ? 'bg-[#39FF14]' : 'bg-cyan-900/30'}`} />
+      
+      <div className="absolute inset-0 pointer-events-none crt-scanlines z-[120]" />
+      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(57, 255, 20, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(57, 255, 20, 0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
       {!isListening && (
-        <div className="absolute inset-0 z-[150] bg-black flex flex-col items-center justify-center p-8 text-center" onClick={startListening}>
+        <div className="absolute inset-0 z-[150] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center" onClick={startListening}>
           <VostokLogo className="w-20 h-20 mb-10 animate-pulse" />
           <h2 className="text-4xl font-black mb-4 tracking-tighter text-white uppercase">Vostok Tuner</h2>
           <p className="text-slate-500 text-[10px] tracking-[0.2em] mb-12 uppercase">Toque para iniciar la afinación de alta fidelidad</p>
-          <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="py-3 px-10 border border-white/10 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Regresar</button>
+          <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="py-3 px-10 border border-white/10 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:bg-white/10 transition-colors">Regresar</button>
         </div>
       )}
 
-      <header className="w-full pt-[max(3.5rem,env(safe-area-inset-top))] px-8 flex justify-between items-start z-20">
+      <header className="w-full pt-[max(3.5rem,env(safe-area-inset-top))] px-8 flex justify-between items-start z-[130]">
         <div className="flex flex-col gap-3">
           <button 
             onClick={() => setActivePanel('left')} 
             aria-label="Seleccionar Instrumento"
-            className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all backdrop-blur-md" 
+            className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all backdrop-blur-md hover:bg-white/10" 
             style={{ WebkitBackdropFilter: 'blur(12px)' }}
           >
             <LayoutGrid className="w-5 h-5 text-slate-400" />
@@ -428,23 +513,23 @@ function VostokTuner({ onBack }) {
           <button 
             onClick={onBack} 
             aria-label="Regresar"
-            className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all backdrop-blur-md" 
+            className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all backdrop-blur-md hover:bg-white/10" 
             style={{ WebkitBackdropFilter: 'blur(12px)' }}
           >
             <ArrowLeft className="w-5 h-5 text-slate-500" />
           </button>
         </div>
         <div className="text-center mt-2 flex flex-col items-center">
-          <div className="text-[9px] font-black text-[#39FF14] uppercase tracking-[0.4em] mb-2 opacity-60">Analog/Digital Master</div>
-          <div className="text-5xl font-black text-white tabular-nums drop-shadow-[0_0_15px_rgba(57,255,20,0.5)]">
+          <div className="text-[9px] font-black text-[#39FF14] uppercase tracking-[0.4em] mb-2 opacity-60 font-mono">Analog/Digital Master</div>
+          <div className="text-5xl font-mono font-black text-white tabular-nums drop-shadow-[0_0_15px_rgba(57,255,20,0.5)]">
             {pitch ? pitch.toFixed(1) : "000.0"}<span className="text-[12px] ml-2 text-[#39FF14]">Hz</span>
           </div>
-          <div className="text-[8px] font-black text-slate-600 mt-2 tracking-[0.3em] uppercase">Ref: {refPitch}Hz</div>
+          <div className="text-[8px] font-black text-slate-600 mt-2 tracking-[0.3em] uppercase font-mono">Ref: {refPitch}Hz</div>
         </div>
         <button 
           onClick={() => setActivePanel('right')} 
           aria-label="Configuración"
-          className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all backdrop-blur-md" 
+          className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all backdrop-blur-md hover:bg-white/10" 
           style={{ WebkitBackdropFilter: 'blur(12px)' }}
         >
           <Settings className="w-5 h-5 text-slate-400" />
@@ -452,24 +537,59 @@ function VostokTuner({ onBack }) {
       </header>
 
       {/* METER DE AGUJA */}
-      <div className="relative w-full max-w-[320px] h-36 mt-12 z-10 shrink-0 flex items-center justify-center">
+      <div className="relative w-full max-w-[320px] h-36 mt-12 z-[130] shrink-0 flex items-center justify-center">
         <svg viewBox="0 0 200 120" className="w-full h-full overflow-visible">
           <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" className="stroke-white/5" strokeWidth="12" strokeLinecap="round" />
-          <path d="M 92 20 A 80 80 0 0 1 108 20" fill="none" className={`transition-all duration-500 ${Math.abs(cents) < 3 && pitch ? 'stroke-[#39FF14] shadow-[0_0_15px_#39FF14]' : 'stroke-white/5'}`} strokeWidth="14" strokeLinecap="round" />
+          <path d="M 92 20 A 80 80 0 0 1 108 20" fill="none" className={`transition-all duration-500 ${isTuned ? 'stroke-[#39FF14] shadow-[0_0_15px_#39FF14]' : 'stroke-white/5'}`} strokeWidth="14" strokeLinecap="round" />
           <g style={{ transform: `rotate(${Math.max(-85, Math.min(85, visualCents * 1.6))}deg)`, transformOrigin: '100px 100px' }} className="will-change-transform">
-            <line x1="100" y1="100" x2="100" y2="20" stroke={pitch ? (Math.abs(cents) < 5 ? '#39FF14' : Math.abs(cents) < 15 ? '#fbbf24' : '#6366f1') : '#333'} strokeWidth="5" strokeLinecap="round" className="transition-all duration-300" />
+            <line x1="100" y1="100" x2="100" y2="20" stroke={pitch ? (isTuned ? '#39FF14' : Math.abs(cents) < 15 ? '#fbbf24' : '#06b6d4') : '#333'} strokeWidth="5" strokeLinecap="round" className="transition-all duration-300" />
             <circle cx="100" cy="100" r="5" fill={pitch ? "#39FF14" : "#333"} />
           </g>
         </svg>
       </div>
 
-      <main className="flex-1 flex flex-col items-center justify-center z-10 w-full px-6 -mt-8">
-        <div className="text-[10rem] md:text-[12rem] font-black leading-none tracking-tighter flex items-start text-white transition-all select-none will-change-transform">
-          {note.n}<span className="text-3xl md:text-4xl font-black opacity-20 mt-8 md:mt-10 ml-2">{note.o}</span>
-        </div>
-        <div className={`mt-6 px-12 py-3 rounded-full border border-white/10 text-xl md:text-2xl font-black transition-colors ${Math.abs(cents) < 5 && pitch ? 'text-[#39FF14] border-[#39FF14]/30 bg-[#39FF14]/5' : 'text-slate-700 bg-white/5'}`}>
-          {pitch ? `${cents > 0 ? '+' : ''}${Math.round(cents)} Cents` : "-- Cents"}
-        </div>
+      <main className="flex-1 flex flex-col items-center justify-center z-[130] w-full px-6 -mt-8 relative">
+        {signalStatus === 'WAITING_SIGNAL' ? (
+           <div className="flex flex-col items-center justify-center h-[250px]">
+             <div className="text-[#39FF14] font-mono text-sm tracking-[0.3em] opacity-50 animate-pulse border border-[#39FF14]/20 bg-[#39FF14]/5 px-6 py-2 rounded-full">WAITING_SIGNAL</div>
+           </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-[250px] w-full">
+            {/* Tension Guide */}
+            <div className="h-8 flex items-center justify-center mb-2">
+              {isTuned ? (
+                <div className="w-full max-w-[200px] h-1 bg-[#39FF14] shadow-[0_0_15px_#39FF14] rounded-full" />
+              ) : cents < -2 ? (
+                <div className="flex items-center gap-2 text-[#06b6d4] font-mono text-[10px] font-black tracking-widest uppercase animate-pulse">
+                  <span>▲</span> TENSION: INCREASE
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-[#06b6d4] font-mono text-[10px] font-black tracking-widest uppercase animate-pulse">
+                  <span>▼</span> TENSION: RELEASE
+                </div>
+              )}
+            </div>
+            
+            {/* Note Display */}
+            <div className="text-[9rem] md:text-[11rem] font-mono font-black leading-none tracking-tighter flex items-start text-white transition-all select-none will-change-transform">
+              {note.n}<span className="text-3xl md:text-4xl font-black text-[#39FF14] opacity-50 mt-8 md:mt-10 ml-2">{note.o}</span>
+            </div>
+            
+            {/* String Detection Label */}
+            <div className="h-8 mt-2 flex items-center justify-center">
+              {detectedString && (
+                <div className="text-[#39FF14] font-mono text-xl font-black tracking-widest">
+                  [ {detectedString} ]
+                </div>
+              )}
+            </div>
+            
+            {/* Cents Display */}
+            <div className={`mt-4 px-12 py-3 rounded-full border border-white/10 text-xl md:text-2xl font-mono font-black transition-colors ${Math.abs(cents) < 5 && pitch ? 'text-[#39FF14] border-[#39FF14]/30 bg-[#39FF14]/5' : 'text-slate-500 bg-white/5'}`}>
+              {pitch ? `${cents > 0 ? '+' : ''}${Math.round(cents)} Cents` : "-- Cents"}
+            </div>
+          </div>
+        )}
       </main>
 
       <div className="h-[env(safe-area-inset-bottom)] w-full" />
@@ -481,8 +601,8 @@ function VostokTuner({ onBack }) {
             <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 left-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white" style={{ WebkitBackdropFilter: 'blur(30px)' }}>
               <div className="flex justify-between items-center mb-10">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Módulo</span>
-                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Instrumentos</h3>
+                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest font-mono">Módulo</span>
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight font-mono">Instrumentos</h3>
                 </div>
                 <button onClick={() => setActivePanel('center')} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X className="w-6 h-6 text-slate-500" /></button>
               </div>
@@ -500,7 +620,7 @@ function VostokTuner({ onBack }) {
                       className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
                     >
                       <Icon className={`w-5 h-5 relative z-10 ${selectedInstrument === inst.id ? 'text-[#39FF14]' : ''}`} />
-                      <span className="font-bold text-sm uppercase tracking-widest relative z-10">{inst.name}</span>
+                      <span className="font-bold font-mono text-sm uppercase tracking-widest relative z-10">{inst.name}</span>
                       {selectedInstrument === inst.id && <Check className="w-4 h-4 ml-auto text-[#39FF14] relative z-10" />}
                     </button>
                   );
@@ -516,24 +636,43 @@ function VostokTuner({ onBack }) {
             <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-y-4 right-4 w-full max-w-[280px] bg-[#0A0A0A]/95 backdrop-blur-3xl z-[200] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col text-white" style={{ WebkitBackdropFilter: 'blur(30px)' }}>
               <div className="flex justify-between items-center mb-10">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Calibración</span>
-                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Ajustes</h3>
+                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest font-mono">Calibración</span>
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight font-mono">Ajustes</h3>
                 </div>
                 <button onClick={() => setActivePanel('center')} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X className="w-6 h-6 text-slate-500" /></button>
               </div>
               <div className="space-y-10 overflow-y-auto pr-2 custom-scrollbar">
                 <section>
-                  <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3">Referencia A4</label>
+                  <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Lab-Presets</label>
+                  <div className="flex flex-col gap-2">
+                    {Object.keys(TUNING_PRESETS).map(preset => (
+                      <button 
+                        key={preset}
+                        onClick={() => {
+                          setTuningPreset(preset);
+                          if (preset === 'VERDI') setRefPitch(432);
+                          else setRefPitch(440);
+                          trackEvent('preset_change', { preset });
+                        }}
+                        className={`p-4 rounded-2xl border transition-all text-xs font-black uppercase tracking-widest text-left font-mono ${tuningPreset === preset ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-[#39FF14]' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
+                      >
+                        {preset.replace('_', ' ')}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <section>
+                  <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Referencia A4</label>
                   <div className="flex items-center justify-between p-2 bg-white/5 rounded-full border border-white/10">
                     <button onClick={() => setRefPitch(p => p - 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Minus className="w-4 h-4" /></button>
-                    <span className="text-2xl font-black text-white tabular-nums tracking-tighter">{refPitch}<span className="text-xs text-slate-500 ml-1 font-normal">Hz</span></span>
+                    <span className="text-2xl font-black font-mono text-white tabular-nums tracking-tighter">{refPitch}<span className="text-xs text-slate-500 ml-1 font-normal">Hz</span></span>
                     <button onClick={() => setRefPitch(p => p + 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Plus className="w-4 h-4" /></button>
                   </div>
                 </section>
                 <section>
                   <div className="flex justify-between mb-6">
-                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3">Smoothing</label>
-                    <span className="text-[10px] font-black text-[#39FF14] tracking-widest">{smoothValue}%</span>
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Smoothing</label>
+                    <span className="text-[10px] font-black font-mono text-[#39FF14] tracking-widest">{smoothValue}%</span>
                   </div>
                   <input type="range" min="0" max="100" value={smoothValue} onChange={(e) => setSmoothValue(parseInt(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-full appearance-none accent-[#39FF14] cursor-pointer" />
                 </section>
@@ -545,7 +684,7 @@ function VostokTuner({ onBack }) {
                   <input type="file" ref={fileInputRef} className="hidden" accept="audio/*" onChange={handleFileUpload} />
                 </section>
               </div>
-              <button onClick={() => setActivePanel('center')} className="mt-auto w-full py-5 bg-[#39FF14]/10 border border-[#39FF14]/20 rounded-3xl text-[10px] font-black text-[#39FF14] uppercase tracking-widest active:scale-95 transition-transform">Listo</button>
+              <button onClick={() => setActivePanel('center')} className="mt-auto w-full py-5 bg-[#39FF14]/10 border border-[#39FF14]/20 rounded-3xl text-[10px] font-black text-[#39FF14] uppercase tracking-widest active:scale-95 transition-transform font-mono">Listo</button>
             </motion.aside>
           </>
         )}
