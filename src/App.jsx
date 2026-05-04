@@ -558,14 +558,23 @@ function VostokTuner({ onBack }) {
 function SoundScienceSection() {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [history, setHistory] = useState([0]);
   const current = PROTAGONISTAS[index];
 
   const nextCard = () => {
     let nextIdx;
+    // Como tenemos 9 tarjetas en total, mantenemos un historial de las últimas 7
+    // para asegurar que no se repitan recientemente y siempre haya opciones nuevas.
     do {
       nextIdx = Math.floor(Math.random() * PROTAGONISTAS.length);
-    } while (nextIdx === index);
+    } while (history.includes(nextIdx));
     
+    setHistory(prev => {
+      const newHistory = [...prev, nextIdx];
+      if (newHistory.length > 7) newHistory.shift();
+      return newHistory;
+    });
+
     setDirection(nextIdx > index ? 1 : -1);
     setIndex(nextIdx);
     trackEvent('genealogy_card_change', { to: PROTAGONISTAS[nextIdx].id });
