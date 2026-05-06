@@ -12,14 +12,32 @@ export default function SpectrumAnalyzer({ onBack }) {
   const analyser = useRef(null);
   const animationRef = useRef(null);
   const dataArray = useRef(null);
-  const peakArray = useRef(null);
   const frameCounterRef = useRef(0);
-  const hoverRef = useRef({ active: false, x: 0 });
+  const hoverRef = useRef({ active: false, x: 0, freq: 0, db: 0 });
 
   // WebGL Resources
   const glRef = useRef(null);
   const programRef = useRef(null);
   const textureRef = useRef(null);
+
+  const resize = useCallback(() => {
+    if (!canvasRef.current || !waterfallCanvasRef.current) return;
+    const canvas = canvasRef.current;
+    const wCanvas = waterfallCanvasRef.current;
+    const dpr = window.devicePixelRatio || 1;
+    
+    const parent = canvas.parentElement;
+    canvas.width = parent.clientWidth * dpr;
+    canvas.height = parent.clientHeight * dpr;
+    
+    const wParent = wCanvas.parentElement;
+    wCanvas.width = wParent.clientWidth * dpr;
+    wCanvas.height = wParent.clientHeight * dpr;
+
+    if (glRef.current) {
+        glRef.current.viewport(0, 0, canvas.width, canvas.height);
+    }
+  }, []);
 
   const initWebGL = useCallback(() => {
     const canvas = canvasRef.current;
@@ -40,23 +58,44 @@ export default function SpectrumAnalyzer({ onBack }) {
       precision highp float;
       varying vec2 v_texCoord;
       uniform sampler2D u_audioData;
+      uniform vec2 u_resolution;
+      uniform float u_hoverX;
       
       void main() {
-        float x = v_texCoord.x;
-        // Escala Logarítmica HD (Bark/Mel Approximation)
+        vec2 uv = v_texCoord;
+        float x = uv.x;
+        
+        // --- HD LOGARITHMIC MAPPING (20Hz - 20kHz) ---
+        // Aligns with musical perception and Vostok HD-RTA standards
         float logX = log2(1.0 + x * 63.0) / 6.0; 
         float amp = texture2D(u_audioData, vec2(logX, 0.5)).r;
         
-        // Renderizado de Barras Noir-Tech
-        float mask = step(v_texCoord.y, amp * 0.8 + 0.1);
+        // --- NOIR-TECH GRID SYSTEM ---
+        float grid = 0.0;
+        // Vertical lines (frequency markers)
+        if (mod(uv.x * u_resolution.x, u_resolution.x / 10.0) < 1.0) grid += 0.05;
+        // Horizontal lines (dB markers)
+        if (mod(uv.y * u_resolution.y, u_resolution.y / 5.0) < 1.0) grid += 0.05;
+
+        // --- SPECTRUM RENDER ---
+        float mask = step(uv.y, amp * 0.85 + 0.05);
         
-        // Gradiente Vostok (Neon Green to Cyan)
-        vec3 color = mix(vec3(0.02, 0.71, 0.84), vec3(0.22, 1.0, 0.08), amp);
+        // Vostok Neon Gradient
+        vec3 color = mix(vec3(0.01, 0.4, 0.5), vec3(0.22, 1.0, 0.08), amp);
         
-        // CRT Scanline Effect
-        float scanline = sin(v_texCoord.y * 500.0) * 0.05;
+        // CRT Scanline
+        float scanline = sin(uv.y * u_resolution.y * 0.5) * 0.04;
         
-        gl_FragColor = vec4((color - scanline) * mask, 1.0);
+        // Laser Trace (Top edge of the spectrum)
+        float edge = smoothstep(0.01, 0.0, abs(uv.y - (amp * 0.85 + 0.05)));
+        vec3 laserColor = vec3(0.2, 1.0, 0.0) * edge;
+
+        // Hover Crosshair
+        float crosshair = step(abs(uv.x - u_hoverX), 0.001) * 0.2;
+
+        vec3 finalColor = (color - scanline + grid + laserColor + crosshair) * mask + (vec3(grid + crosshair) * (1.0-mask));
+        
+        gl_FragColor = vec4(finalColor, 1.0);
       }
     `;
 
@@ -64,6 +103,10 @@ export default function SpectrumAnalyzer({ onBack }) {
       const shader = gl.createShader(type);
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error(gl.getShaderInfoLog(shader));
+          return null;
+      }
       return shader;
     };
 
@@ -88,7 +131,9 @@ export default function SpectrumAnalyzer({ onBack }) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     textureRef.current = texture;
-  }, []);
+    
+    resize();
+  }, [resize]);
 
   const draw = useCallback(() => {
     const loop = () => {
@@ -103,17 +148,39 @@ export default function SpectrumAnalyzer({ onBack }) {
 
       analyser.current.getByteFrequencyData(dataArray.current);
 
+      // --- Peak Detection Logic ---
+      let maxVal = -1;
+      let maxIdx = -1;
+      for (let i = 0; i < dataArray.current.length; i++) {
+        if (dataArray.current[i] > maxVal) {
+          maxVal = dataArray.current[i];
+          maxIdx = i;
+        }
+      }
+      if (maxVal > 50) {
+        frameCounterRef.current++;
+        if (frameCounterRef.current % 10 === 0) {
+           const freq = (maxIdx * audioCtx.current.sampleRate) / analyser.current.fftSize;
+           setPeakFreq(Math.round(freq));
+        }
+      }
+
       gl.useProgram(program);
+      
+      const resLoc = gl.getUniformLocation(program, 'u_resolution');
+      gl.uniform2f(resLoc, gl.canvas.width, gl.canvas.height);
+      
+      const hoverLoc = gl.getUniformLocation(program, 'u_hoverX');
+      gl.uniform1f(hoverLoc, hoverRef.current.active ? hoverRef.current.x / (gl.canvas.width / (window.devicePixelRatio || 1)) : -1.0);
+
       gl.bindTexture(gl.TEXTURE_2D, texture);
-      // Transferencia Zero-Copy efectiva al usar LUMINANCE para datos crudos de 8-bits
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, dataArray.current.length, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, dataArray.current);
       
-      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
       gl.clearColor(0.01, 0.01, 0.01, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-      // Waterfall Render (Legacy 2D optimized)
+      // Waterfall Render (Optimized Canvas2D Layer)
       const wCanvas = waterfallCanvasRef.current;
       const wCtx = wCanvas.getContext('2d', { alpha: false });
       wCtx.drawImage(wCanvas, 0, 0, wCanvas.width, wCanvas.height - 1, 0, 1, wCanvas.width, wCanvas.height - 1);
@@ -121,7 +188,7 @@ export default function SpectrumAnalyzer({ onBack }) {
       for (let i = 0; i < wCanvas.width; i++) {
           const val = dataArray.current[Math.floor((i / wCanvas.width) * dataArray.current.length)];
           const idx = i * 4;
-          row.data[idx] = val * 0.2; 
+          row.data[idx] = val * 0.1; 
           row.data[idx+1] = val;     
           row.data[idx+2] = 255 - val; 
           row.data[idx+3] = 255;
@@ -157,11 +224,13 @@ export default function SpectrumAnalyzer({ onBack }) {
   };
 
   useEffect(() => {
+    window.addEventListener('resize', resize);
     return () => {
+      window.removeEventListener('resize', resize);
       cancelAnimationFrame(animationRef.current);
       if (audioCtx.current) audioCtx.current.close();
     };
-  }, []);
+  }, [resize]);
 
   return (
     <div className="fixed inset-0 bg-[#010101] z-[100] p-6 flex flex-col font-sans text-white overflow-hidden">
@@ -180,9 +249,25 @@ export default function SpectrumAnalyzer({ onBack }) {
 
       <main className="flex-1 flex flex-col gap-5 relative z-10">
         <div className="flex-[3] relative bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
-            <canvas ref={canvasRef} className="w-full h-full" />
+            <canvas 
+                ref={canvasRef} 
+                onMouseMove={(e) => {
+                    const rect = canvasRef.current.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    hoverRef.current = { active: true, x };
+                }}
+                onMouseLeave={() => { hoverRef.current.active = false; }}
+                className="w-full h-full cursor-crosshair" 
+            />
+            
+            {/* Peak Telemetry Overlay */}
+            <div className="absolute top-6 left-8 bg-black/40 backdrop-blur-xl border border-white/5 px-6 py-3 rounded-2xl shadow-xl z-30 pointer-events-none">
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] block mb-1">Peak Freq</span>
+                <div className="font-mono text-3xl font-black text-white">{peakFreq}<span className="text-xs ml-1 text-[#39FF14]">Hz</span></div>
+            </div>
+
             {!isRunning && (
-                <div onClick={startEngine} className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center cursor-pointer">
+                <div onClick={startEngine} className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center cursor-pointer z-50">
                     <Mic className="w-16 h-16 text-[#39FF14] mb-4 animate-pulse" />
                     <span className="text-[10px] font-black tracking-[0.6em] text-[#39FF14] uppercase">INICIAR MOTOR WEBGL</span>
                 </div>
@@ -190,6 +275,10 @@ export default function SpectrumAnalyzer({ onBack }) {
         </div>
         <div className="h-40 relative bg-white/5 border border-white/10 rounded-[1.5rem] overflow-hidden">
             <canvas ref={waterfallCanvasRef} className="w-full h-full" />
+            <div className="absolute top-3 left-6 z-30 flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 backdrop-blur-md">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_cyan]"></div>
+                <span className="text-[8px] font-black text-white uppercase tracking-[0.3em] opacity-60">TOPOGRAFÍA SÓNICA</span>
+            </div>
         </div>
       </main>
     </div>

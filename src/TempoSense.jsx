@@ -195,7 +195,7 @@ export default function TempoSense({ onBack }) {
                             {bpm}<span className="text-2xl text-slate-500 font-light ml-2">BPM</span>
                         </div>
                     ) : (
-                        <div className="text-7xl font-black tracking-tighter text-[#39FF14] drop-shadow-[0_0_30px_rgba(57,255,20,0.3)]">
+                        <div className={`font-black tracking-tighter text-[#39FF14] drop-shadow-[0_0_30px_rgba(57,255,20,0.3)] ${key ? 'text-7xl' : 'text-4xl opacity-50'}`}>
                             {key || 'ESCUCHANDO'}
                         </div>
                     )}
