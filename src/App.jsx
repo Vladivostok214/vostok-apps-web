@@ -13,69 +13,71 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
 import posthog from 'posthog-js';
 
-// --- OPTIMIZACIÓN DE PROCESAMIENTO ---
-// Pre-asignamos memoria para evitar Garbage Collection en el loop de audio
-const MAX_BUFFER_SIZE = 4096; // Aumentado para soportar mayor resolución en bajos
-const correlationBuffer = new Float32Array(MAX_BUFFER_SIZE);
-
-const autoCorrelate = (buf, sampleRate) => {
+// --- VOSTOK DSP: ADVANCED PITCH DETECTION (YIN-OPTIMIZED) ---
+const autoCorrelate = (buf, sampleRate, isBass = false) => {
   const SIZE = buf.length;
-  let rms = 0;
-  for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
-  rms = Math.sqrt(rms / SIZE);
-  
-  if (rms < 0.005) return -1; // -46dB minimum for autocorrelation to run
 
-  // Rango de búsqueda optimizado para frecuencias musicales (20Hz a 4000Hz)
-  const minPeriod = Math.floor(sampleRate / 4000); // ~11 muestras para 4kHz
-  const maxPeriod = Math.ceil(sampleRate / 20);   // ~2205 muestras para 20Hz
-  
-  let maxval = -1;
-  let bestLag = -1;
-  
-  // Limpiar buffer de correlación (reutilizado)
-  correlationBuffer.fill(0);
-  
-  // 1. BÚSQUEDA GRUESA (Saltos de 4 para velocidad extrema)
-  for (let i = minPeriod; i <= maxPeriod && i < SIZE; i += 4) {
-    for (let j = 0; j < SIZE - i; j += 4) { 
-      correlationBuffer[i] += buf[j] * buf[j + i];
+  // 1. Decimation for Bass (E1 Stability)
+  // At 48kHz, E1 (41.2Hz) is ~1165 samples. Hard to track with high noise.
+  // Downsampling by 4 (to 12kHz) makes E1 ~291 samples, much more stable.
+  let activeBuf = buf;
+  let activeSampleRate = sampleRate;
+
+  if (isBass) {
+    const downsampled = new Float32Array(Math.floor(SIZE / 4));
+    for (let i = 0; i < downsampled.length; i++) {
+      downsampled[i] = (buf[i*4] + buf[i*4+1] + buf[i*4+2] + buf[i*4+3]) / 4;
     }
-    
-    if (correlationBuffer[i] > maxval) {
-      maxval = correlationBuffer[i];
-      bestLag = i;
+    activeBuf = downsampled;
+    activeSampleRate = sampleRate / 4;
+  }
+
+  const N = activeBuf.length;
+  const yinBuffer = new Float32Array(Math.floor(N / 2));
+
+  // STEP 1: Difference Function
+  for (let tau = 0; tau < yinBuffer.length; tau++) {
+    for (let j = 0; j < yinBuffer.length; j++) {
+      const delta = activeBuf[j] - activeBuf[j + tau];
+      yinBuffer[tau] += delta * delta;
     }
   }
 
-  // 2. BÚSQUEDA FINA (Refinamos alrededor del mejor lag encontrado)
-  const startRefine = Math.max(minPeriod, bestLag - 4);
-  const endRefine = Math.min(maxPeriod, bestLag + 4);
-  maxval = -1;
+  // STEP 2: Cumulative Mean Normalized Difference Function (CMNDF)
+  yinBuffer[0] = 1;
+  let runningSum = 0;
+  for (let tau = 1; tau < yinBuffer.length; tau++) {
+    runningSum += yinBuffer[tau];
+    yinBuffer[tau] *= tau / runningSum;
+  }
 
-  for (let i = startRefine; i <= endRefine && i < SIZE; i++) {
-    correlationBuffer[i] = 0; 
-    for (let j = 0; j < SIZE - i; j++) {
-      correlationBuffer[i] += buf[j] * buf[j + i];
-    }
-    if (correlationBuffer[i] > maxval) {
-      maxval = correlationBuffer[i];
-      bestLag = i;
+  // STEP 3: Absolute Thresholding
+  let period = -1;
+  const threshold = 0.15;
+  for (let tau = 1; tau < yinBuffer.length; tau++) {
+    if (yinBuffer[tau] < threshold) {
+      // Find local minimum
+      while (tau + 1 < yinBuffer.length && yinBuffer[tau + 1] < yinBuffer[tau]) {
+        tau++;
+      }
+      period = tau;
+      break;
     }
   }
 
-  // 3. INTERPOLACIÓN PARABÓLICA (Sub-sample precision)
-  let T0 = bestLag;
-  if (T0 <= minPeriod || T0 >= maxPeriod) return -1;
-  
-  const x1 = correlationBuffer[T0 - 1], x2 = correlationBuffer[T0], x3 = correlationBuffer[T0 + 1];
-  const a = (x1 + x3 - 2 * x2) / 2;
-  const b = (x3 - x1) / 2;
-  if (a) T0 = T0 - b / (2 * a);
-  
-  return sampleRate / T0;
+  if (period === -1) return -1;
+
+  // STEP 4: Parabolic Interpolation for sub-sample precision
+  let betterPeriod = period;
+  if (period > 0 && period < yinBuffer.length - 1) {
+    const s0 = yinBuffer[period - 1];
+    const s1 = yinBuffer[period];
+    const s2 = yinBuffer[period + 1];
+    betterPeriod = period + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+  }
+
+  return activeSampleRate / betterPeriod;
 };
-
 const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 const INSTRUMENTS = [
@@ -409,7 +411,7 @@ function VostokTuner({ onBack }) {
         rms = Math.sqrt(rms / audioBufferRef.current.length);
         const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
         
-        const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
+        const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate, selectedInstrumentRef.current === 'bass');
 
         if (rmsDb < -45 || freq === -1) {
           setSignalStatus(prev => prev === 'SYS_IDLE' ? prev : 'SYS_IDLE');

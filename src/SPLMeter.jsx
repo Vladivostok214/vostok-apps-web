@@ -24,58 +24,7 @@ export default function SPLMeter({ onBack }) {
   };
 
   const update = useCallback(() => {
-    function loop() {
-      if (!analyserRef.current || !audioContext.current) return;
-      
-      const bufferLength = analyserRef.current.frequencyBinCount;
-      
-      // ZERO-COPY: Evitamos saturar el Garbage Collector a 60 FPS
-      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
-        dataArrayRef.current = new Float32Array(bufferLength);
-      }
-      
-      const dataArray = dataArrayRef.current;
-      
-      // EXTRACCIÓN CIENTÍFICA: Ahora usamos el dominio de la frecuencia
-      analyserRef.current.getFloatFrequencyData(dataArray);
-
-      let sumPower = 0;
-      const sampleRate = audioContext.current.sampleRate;
-      const nyquist = sampleRate / 2;
-
-      for (let i = 0; i < bufferLength; i++) {
-        const freq = (i * nyquist) / bufferLength;
-        
-        // Descartar frecuencias fuera del rango auditivo útil para no falsear el dBA
-        if (freq < 20 || freq > 20000) continue;
-
-        const dbfs = dataArray[i];
-        if (dbfs === -Infinity) continue;
-
-        // Ponderación A: Restamos/Sumamos decibelios según la sensibilidad humana
-        const aWeight = getAWeighting(freq);
-        const weightedDbfs = dbfs + aWeight;
-
-        // Para sumar decibelios, debemos convertirlos a potencia lineal primero
-        sumPower += Math.pow(10, weightedDbfs / 10);
-      }
-      
-      // Volver a decibelios y aplicar la constante de calibración K para micrófonos móviles
-      const totalDbfs = 10 * Math.log10(sumPower + 1e-12);
-      const calibrationK = 115; // Ajuste empírico aproximado a presión sonora real
-      const instantDb = Math.max(30, Math.min(120, Math.round(totalDbfs + calibrationK)));
-      
-      setDb(instantDb);
-
-      // Dosímetro NIOSH
-      if (instantDb > 85) {
-        const doseIncrement = Math.pow(2, (instantDb - 85) / 3) / (28800 * 60);
-        setCumulativeRisk(prev => Math.min(100, prev + doseIncrement * 100));
-      }
-
-      reqIdRef.current = requestAnimationFrame(loop);
-    }
-    loop();
+    // DSP is now handled by the AudioWorklet for maximum precision and zero main-thread overhead.
   }, []);
 
   useEffect(() => {
@@ -88,16 +37,32 @@ export default function SPLMeter({ onBack }) {
             autoGainControl: false
           } 
         });
-        audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
-        analyserRef.current = audioContext.current.createAnalyser();
-        const source = audioContext.current.createMediaStreamSource(stream);
-        source.connect(analyserRef.current);
+        audioContext.current = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: 48000 // Fixed for Worklet IIR coefficients consistency
+        });
+
+        // Load Vostok DSP Processor
+        await audioContext.current.audioWorklet.addModule('/vostok-dsp-processor.js');
         
-        // Alta resolución (4096 bins) para captar con precisión la curva de ecualización A
-        analyserRef.current.fftSize = 4096; 
-        update();
+        const source = audioContext.current.createMediaStreamSource(stream);
+        const dspNode = new AudioWorkletNode(audioContext.current, 'vostok-dsp-processor');
+        
+        dspNode.port.onmessage = (event) => {
+          if (event.data.type === 'SPL_UPDATE') {
+            setDb(Math.round(event.data.value));
+            
+            // Dosímetro NIOSH
+            const instantDb = event.data.value;
+            if (instantDb > 85) {
+              const doseIncrement = Math.pow(2, (instantDb - 85) / 3) / (28800 * 60);
+              setCumulativeRisk(prev => Math.min(100, prev + doseIncrement * 100));
+            }
+          }
+        };
+
+        source.connect(dspNode);
       } catch (e) {
-        console.error(e);
+        console.error("[Vostok SPL Error]", e);
       }
     };
     initAudio();
