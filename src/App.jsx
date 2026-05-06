@@ -15,7 +15,7 @@ import posthog from 'posthog-js';
 
 // --- OPTIMIZACIÓN DE PROCESAMIENTO ---
 // Pre-asignamos memoria para evitar Garbage Collection en el loop de audio
-const MAX_BUFFER_SIZE = 2048;
+const MAX_BUFFER_SIZE = 4096; // Aumentado para soportar mayor resolución en bajos
 const correlationBuffer = new Float32Array(MAX_BUFFER_SIZE);
 
 const autoCorrelate = (buf, sampleRate) => {
@@ -301,9 +301,12 @@ function VostokTuner({ onBack }) {
   const [tuningPreset, setTuningPreset] = useState('STANDARD');
   const [signalStatus, setSignalStatus] = useState('SYS_IDLE');
   const [detectedString, setDetectedString] = useState(null);
+  const [isTuned, setIsTuned] = useState(false);
 
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
+  const highpassRef = useRef(null);
+  const lowpassRef = useRef(null);
   const mediaStreamSourceRef = useRef(null);
   const rafIdRef = useRef(null);
   const audioBufferRef = useRef(null);
@@ -313,6 +316,55 @@ function VostokTuner({ onBack }) {
   const tuningPresetRef = useRef(tuningPreset);
   const freqHistoryRef = useRef([]);
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
+
+  // Configuración dinámica de filtros según el instrumento
+  useEffect(() => {
+    if (!highpassRef.current || !lowpassRef.current) return;
+
+    let hpFreq = 70;
+    let lpFreq = 1500;
+
+    switch (selectedInstrument) {
+      case 'bass':
+        hpFreq = 30; // Necesario para el Mi grave (41.2Hz)
+        lpFreq = 800; // El bajo no necesita armónicos de alta frecuencia
+        break;
+      case 'ukulele':
+        hpFreq = 150; // El ukelele empieza en Sol (196Hz)
+        lpFreq = 3000;
+        break;
+      case 'chromatic':
+        hpFreq = 20;
+        lpFreq = 4000;
+        break;
+      default: // guitar
+        hpFreq = 70; // Mi grave es 82.4Hz
+        lpFreq = 1500;
+        break;
+    }
+
+    // Transición suave para evitar clicks de audio
+    const now = audioContextRef.current?.currentTime || 0;
+    highpassRef.current.frequency.setTargetAtTime(hpFreq, now, 0.1);
+    lowpassRef.current.frequency.setTargetAtTime(lpFreq, now, 0.1);
+    
+    console.log(`[Vostok DSP] Filtros adaptados: ${selectedInstrument} (${hpFreq}Hz - ${lpFreq}Hz)`);
+  }, [selectedInstrument]);
+
+  // Histéresis para estabilización visual y háptica
+  useEffect(() => {
+    const absCents = Math.abs(cents);
+    if (signalStatus !== 'ACTIVE') {
+      setIsTuned(false);
+      return;
+    }
+
+    if (!isTuned && absCents <= 2) {
+      setIsTuned(true);
+    } else if (isTuned && absCents > 6) {
+      setIsTuned(false);
+    }
+  }, [cents, isTuned, signalStatus]);
 
   useEffect(() => { refPitchRef.current = refPitch; }, [refPitch]);
   useEffect(() => { selectedInstrumentRef.current = selectedInstrument; }, [selectedInstrument]);
@@ -402,18 +454,27 @@ function VostokTuner({ onBack }) {
       
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 2048;
+      analyserRef.current.fftSize = 4096;
       
-      // 2. Capa de Pre-procesamiento (Filtros Desacoplados)
+      // 2. Capa de Pre-procesamiento Dinámica (Filtros Desacoplados)
       const highpassFilter = audioContextRef.current.createBiquadFilter();
       highpassFilter.type = 'highpass';
-      highpassFilter.frequency.value = 60; // Filtra ruido de manejo y retumbe
       highpassFilter.Q.value = 0.7;
+      highpassRef.current = highpassFilter;
 
       const lowpassFilter = audioContextRef.current.createBiquadFilter();
       lowpassFilter.type = 'lowpass';
-      lowpassFilter.frequency.value = 2000; // Filtra siseo y estática de alta frecuencia
       lowpassFilter.Q.value = 0.7;
+      lowpassRef.current = lowpassFilter;
+
+      // Aplicar valores iniciales según instrumento
+      let hpFreq = 70, lpFreq = 1500;
+      if (selectedInstrument === 'bass') { hpFreq = 30; lpFreq = 800; }
+      else if (selectedInstrument === 'ukulele') { hpFreq = 150; lpFreq = 3000; }
+      else if (selectedInstrument === 'chromatic') { hpFreq = 20; lpFreq = 4000; }
+      
+      highpassFilter.frequency.value = hpFreq;
+      lowpassFilter.frequency.value = lpFreq;
 
       // 3. Cadena de conexión estricta
       mediaStreamSourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
@@ -447,6 +508,7 @@ function VostokTuner({ onBack }) {
     if (audioContextRef.current) audioContextRef.current.close();
     setIsListening(false);
     setPitch(null);
+    setIsTuned(false);
     releaseWakeLock();
   }, [releaseWakeLock]);
 
@@ -456,10 +518,10 @@ function VostokTuner({ onBack }) {
 
   // Haptic feedback cuando está afinado
   useEffect(() => {
-    if (isListening && Math.abs(cents) < 2) {
+    if (isListening && isTuned) {
       if ('vibrate' in navigator) navigator.vibrate(10);
     }
-  }, [cents, isListening]);
+  }, [isTuned, isListening]);
 
   useEffect(() => {
     let animId;
@@ -505,7 +567,6 @@ function VostokTuner({ onBack }) {
   };
 
   const note = targetMidi ? { n: noteStrings[targetMidi % 12], o: Math.floor(targetMidi / 12) - 1 } : { n: "-", o: "" };
-  const isTuned = isListening && signalStatus === 'ACTIVE' && Math.abs(cents) <= 2;
 
   return (
     <div className={`fixed inset-0 bg-[#010101] z-[100] flex flex-col items-center overflow-hidden font-sans text-white transition-all duration-500 ${isTuned ? 'shadow-[inset_0_0_100px_rgba(57,255,20,0.15)] border-4 border-[#39FF14]/20 rounded-[2.5rem]' : ''}`}>
