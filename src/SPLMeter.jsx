@@ -114,7 +114,9 @@ export default function SPLMeter({ onBack }) {
     const animate = () => {
       setVisualDb(prev => {
         const diff = db - prev;
-        return prev + diff * 0.15;
+        // Ajustamos la velocidad de respuesta de la aguja (Balística del medidor)
+        const factor = Math.abs(diff) > 10 ? 0.2 : 0.1; 
+        return prev + diff * factor;
       });
       animId = requestAnimationFrame(animate);
     };
@@ -129,6 +131,7 @@ export default function SPLMeter({ onBack }) {
   };
 
   const status = getStatus(db);
+  // Ajuste fino del ángulo para que coincida perfectamente con la escala de 20 a 120 dB
   const angle = ((visualDb - 20) / (120 - 20)) * 180 - 90;
 
   return (

@@ -26,33 +26,47 @@ const autoCorrelate = (buf, sampleRate) => {
   
   if (rms < 0.005) return -1; // -46dB minimum for autocorrelation to run
 
-  let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-  for (let i = 0; i < SIZE / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
-  for (let i = 1; i < SIZE / 2; i++) { if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; } }
+  // Rango de búsqueda optimizado para frecuencias musicales (20Hz a 4000Hz)
+  const minPeriod = Math.floor(sampleRate / 4000); // ~11 muestras para 4kHz
+  const maxPeriod = Math.ceil(sampleRate / 20);   // ~2205 muestras para 20Hz
   
-  const activeBuf = buf.subarray(r1, r2); // subarray no copia, usa la misma memoria
-  const activeSize = activeBuf.length;
+  let maxval = -1;
+  let bestLag = -1;
   
   // Limpiar buffer de correlación (reutilizado)
   correlationBuffer.fill(0);
   
-  for (let i = 0; i < activeSize; i++) {
-    for (let j = 0; j < activeSize - i; j++) {
-      correlationBuffer[i] += activeBuf[j] * activeBuf[j + i];
+  // 1. BÚSQUEDA GRUESA (Saltos de 4 para velocidad extrema)
+  for (let i = minPeriod; i <= maxPeriod && i < SIZE; i += 4) {
+    for (let j = 0; j < SIZE - i; j += 4) { 
+      correlationBuffer[i] += buf[j] * buf[j + i];
     }
-  }
-
-  let d = 0; while (correlationBuffer[d] > correlationBuffer[d + 1]) d++;
-  let maxval = -1, maxpos = -1;
-  for (let i = d; i < activeSize; i++) {
+    
     if (correlationBuffer[i] > maxval) {
       maxval = correlationBuffer[i];
-      maxpos = i;
+      bestLag = i;
     }
   }
 
-  let T0 = maxpos;
-  if (T0 <= 0 || T0 >= activeSize - 1) return -1;
+  // 2. BÚSQUEDA FINA (Refinamos alrededor del mejor lag encontrado)
+  const startRefine = Math.max(minPeriod, bestLag - 4);
+  const endRefine = Math.min(maxPeriod, bestLag + 4);
+  maxval = -1;
+
+  for (let i = startRefine; i <= endRefine && i < SIZE; i++) {
+    correlationBuffer[i] = 0; 
+    for (let j = 0; j < SIZE - i; j++) {
+      correlationBuffer[i] += buf[j] * buf[j + i];
+    }
+    if (correlationBuffer[i] > maxval) {
+      maxval = correlationBuffer[i];
+      bestLag = i;
+    }
+  }
+
+  // 3. INTERPOLACIÓN PARABÓLICA (Sub-sample precision)
+  let T0 = bestLag;
+  if (T0 <= minPeriod || T0 >= maxPeriod) return -1;
   
   const x1 = correlationBuffer[T0 - 1], x2 = correlationBuffer[T0], x3 = correlationBuffer[T0 + 1];
   const a = (x1 + x3 - 2 * x2) / 2;
@@ -307,6 +321,7 @@ function VostokTuner({ onBack }) {
   const analyserRef = useRef(null);
   const highpassRef = useRef(null);
   const lowpassRef = useRef(null);
+  const compensationRef = useRef(null);
   const mediaStreamSourceRef = useRef(null);
   const rafIdRef = useRef(null);
   const audioBufferRef = useRef(null);
@@ -353,12 +368,12 @@ function VostokTuner({ onBack }) {
 
   // Histéresis para estabilización visual y háptica
   useEffect(() => {
-    const absCents = Math.abs(cents);
     if (signalStatus !== 'ACTIVE') {
-      setIsTuned(false);
+      if (isTuned) setIsTuned(false);
       return;
     }
 
+    const absCents = Math.abs(cents);
     if (!isTuned && absCents <= 2) {
       setIsTuned(true);
     } else if (isTuned && absCents > 6) {
@@ -371,8 +386,14 @@ function VostokTuner({ onBack }) {
   useEffect(() => { tuningPresetRef.current = tuningPreset; }, [tuningPreset]);
 
   const updateLoop = useCallback(() => {
-    function loop() {
+    let lastUpdate = 0;
+
+    function loop(now) {
       if (!analyserRef.current || !audioContextRef.current) return;
+      
+      // Target: 20 FPS estables (1000ms / 20 = 50ms per frame)
+      // Esto permite que el motor analice buffers enormes (8k) sin saturar la UI
+      const shouldUpdateState = now - lastUpdate >= 50;
       
       if (!audioBufferRef.current) {
           audioBufferRef.current = new Float32Array(analyserRef.current.fftSize);
@@ -380,65 +401,65 @@ function VostokTuner({ onBack }) {
       
       analyserRef.current.getFloatTimeDomainData(audioBufferRef.current);
       
-      // RMS Calculation para estabilización (Anti-Noise Logic)
-      let rms = 0;
-      for (let i = 0; i < audioBufferRef.current.length; i++) {
-        rms += audioBufferRef.current[i] * audioBufferRef.current[i];
-      }
-      rms = Math.sqrt(rms / audioBufferRef.current.length);
-      const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
-      
-      const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
+      if (shouldUpdateState) {
+        let rms = 0;
+        for (let i = 0; i < audioBufferRef.current.length; i++) {
+          rms += audioBufferRef.current[i] * audioBufferRef.current[i];
+        }
+        rms = Math.sqrt(rms / audioBufferRef.current.length);
+        const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
+        
+        const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate);
 
-      if (rmsDb < -45 || freq === -1) {
-        setSignalStatus('SYS_IDLE');
-        setCents(prev => prev * 0.8); // Suavizado al centro
-        setPitch(null);
-        setDetectedString(null);
-        freqHistoryRef.current = [];
-      } else {
-        setSignalStatus('ACTIVE');
-        // Filtro Media Móvil 5 pasos
-        freqHistoryRef.current.push(freq);
-        if (freqHistoryRef.current.length > 5) freqHistoryRef.current.shift();
-        
-        const avgFreq = freqHistoryRef.current.reduce((a, b) => a + b, 0) / freqHistoryRef.current.length;
-        const midiFloat = 12 * (Math.log(avgFreq / refPitchRef.current) / Math.log(2)) + 69;
-        
-        // Detección inteligente de cuerda
-        let target = Math.round(midiFloat);
-        if (selectedInstrumentRef.current === 'guitar') {
-          const currentPreset = tuningPresetRef.current;
-          const matrix = TUNING_PRESETS[currentPreset] || TUNING_PRESETS.STANDARD;
+        if (rmsDb < -45 || freq === -1) {
+          setSignalStatus(prev => prev === 'SYS_IDLE' ? prev : 'SYS_IDLE');
+          setCents(prev => Math.abs(prev) < 0.1 ? 0 : prev * 0.8);
+          setPitch(prev => prev === null ? null : null);
+          setDetectedString(prev => prev === null ? null : null);
+          freqHistoryRef.current = [];
+        } else {
+          // Filtro Media Móvil 5 pasos
+          freqHistoryRef.current.push(freq);
+          if (freqHistoryRef.current.length > 5) freqHistoryRef.current.shift();
           
-          let minDiff = Infinity;
-          let closestString = null;
-          for (const s of matrix) {
-            const diff = Math.abs(midiFloat - s.midi);
-            if (diff < minDiff) {
-              minDiff = diff;
-              closestString = s;
+          const avgFreq = freqHistoryRef.current.reduce((a, b) => a + b, 0) / freqHistoryRef.current.length;
+          setSignalStatus(prev => prev === 'ACTIVE' ? prev : 'ACTIVE');
+          
+          const midiFloat = 12 * (Math.log(avgFreq / refPitchRef.current) / Math.log(2)) + 69;
+          let target = Math.round(midiFloat);
+          let newDetectedString = null;
+
+          if (selectedInstrumentRef.current === 'guitar') {
+            const currentPreset = tuningPresetRef.current;
+            const matrix = TUNING_PRESETS[currentPreset] || TUNING_PRESETS.STANDARD;
+            
+            let minDiff = Infinity;
+            let closestString = null;
+            for (const s of matrix) {
+              const diff = Math.abs(midiFloat - s.midi);
+              if (diff < minDiff) { minDiff = diff; closestString = s; }
+            }
+
+            if (minDiff < 1) { 
+              target = closestString.midi;
+              newDetectedString = closestString.label;
             }
           }
 
-          if (minDiff < 1) { // Menos de 100 cents de desviación
-            target = closestString.midi;
-            setDetectedString(closestString.label);
-          } else {
-            setDetectedString(null);
-          }
-        } else {
-          setDetectedString(null);
+          const newCents = (midiFloat - target) * 100;
+          
+          // Actualización selectiva por umbral de cambio
+          setPitch(prev => Math.abs(prev - avgFreq) > 0.1 ? avgFreq : prev);
+          setCents(prev => Math.abs(prev - newCents) > 0.1 ? newCents : prev);
+          setTargetMidi(prev => prev === target ? prev : target);
+          setDetectedString(prev => prev === newDetectedString ? prev : newDetectedString);
         }
-
-        setCents((midiFloat - target) * 100);
-        setPitch(avgFreq);
-        setTargetMidi(target);
+        lastUpdate = now;
       }
       
       rafIdRef.current = requestAnimationFrame(loop);
     }
-    loop();
+    rafIdRef.current = requestAnimationFrame(loop);
   }, []);
 
   const startListening = async () => {
@@ -448,15 +469,47 @@ function VostokTuner({ onBack }) {
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
-          autoGainControl: false
+          autoGainControl: false,
+          sampleRate: 22050 // Sugerencia de hardware (puede no ser respetada por todos los browsers)
         } 
       });
       
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      // Forzamos el AudioContext a 22050Hz para optimización de procesamiento y resolución en bajos
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 22050
+      });
+      
+      // Browser Safety: Forzamos el resume() ya que muchos navegadores inician el contexto en 'suspended'
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 4096;
       
-      // 2. Capa de Pre-procesamiento Dinámica (Filtros Desacoplados)
+      // 2. Capa de Compensación de Micrófono (Hardware EQ Inverse)
+      const compensationFilter = audioContextRef.current.createBiquadFilter();
+      compensationFilter.type = 'peaking';
+      
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isIOS) {
+        // iPhone suele tener realce en medios-altos (claridad de voz) y corte en graves.
+        // Compensamos reforzando fundamentales y suavizando el brillo.
+        compensationFilter.frequency.value = 6000;
+        compensationFilter.gain.value = -3;
+        compensationFilter.Q.value = 1.0;
+        console.log("[Vostok DSP] Compensación activa: Perfil iOS (De-Esser/Low-Boost)");
+      } else {
+        // Android genérico/Flagships suelen tener respuesta más plana pero con ruido DSP.
+        // Reforzamos la zona de fundamentales (80Hz-200Hz).
+        compensationFilter.frequency.value = 150;
+        compensationFilter.gain.value = 3;
+        compensationFilter.Q.value = 0.7;
+        console.log("[Vostok DSP] Compensación activa: Perfil Android/Generic (Bass Reinforcement)");
+      }
+      compensationRef.current = compensationFilter;
+
+      // 3. Capa de Pre-procesamiento Dinámica (Filtros Desacoplados)
       const highpassFilter = audioContextRef.current.createBiquadFilter();
       highpassFilter.type = 'highpass';
       highpassFilter.Q.value = 0.7;
@@ -476,9 +529,10 @@ function VostokTuner({ onBack }) {
       highpassFilter.frequency.value = hpFreq;
       lowpassFilter.frequency.value = lpFreq;
 
-      // 3. Cadena de conexión estricta
+      // 4. Cadena de conexión estricta: Source -> Compensation -> Highpass -> Lowpass -> Analyser
       mediaStreamSourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
-      mediaStreamSourceRef.current.connect(highpassFilter);
+      mediaStreamSourceRef.current.connect(compensationFilter);
+      compensationFilter.connect(highpassFilter);
       highpassFilter.connect(lowpassFilter);
       lowpassFilter.connect(analyserRef.current);
       
@@ -494,8 +548,15 @@ function VostokTuner({ onBack }) {
         engine_status: 'STABLE_DSP'
       });
     } catch (e) { 
-      console.error(e);
-      alert("Se requiere acceso al micrófono para el afinador.");
+      console.error("[Vostok DSP Error]", e);
+      if (e.name === 'NotAllowedError') {
+        alert("Acceso denegado: Por favor, permite el uso del micrófono en la barra de direcciones del navegador.");
+      } else if (e.name === 'NotFoundError') {
+        alert("No se encontró ningún micrófono conectado.");
+      } else {
+        alert(`Error de inicialización: ${e.message}`);
+      }
+      setIsListening(false);
     }
   };
 
