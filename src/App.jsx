@@ -973,7 +973,7 @@ function SoundScienceSection({ onOpenArchive }) {
         onClick={onOpenArchive}
         className="mt-16 px-10 py-4 bg-white/5 border border-cyan-500/20 rounded-full flex items-center gap-4 group transition-all hover:bg-cyan-500/10 hover:border-cyan-500/40 z-10"
       >
-        <Database className="w-5 h-5 text-cyan-400 group-hover:animate-pulse" />
+        <Activity className="w-5 h-5 text-cyan-400 group-hover:animate-pulse" />
         <div className="flex flex-col items-start">
           <span className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.3em]">Explorar Base de Datos</span>
           <span className="text-xs font-bold text-white uppercase tracking-widest">Audio Archive Databank</span>

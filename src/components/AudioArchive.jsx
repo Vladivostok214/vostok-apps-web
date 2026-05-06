@@ -263,7 +263,7 @@ export default function AudioArchive({ onClose }) {
             </div>
           </div>
           <div className="flex items-center space-x-2 font-telemetry text-xs text-slate-500">
-            <Database className="w-4 h-4 text-slate-400"/> 
+            <Activity className="w-4 h-4 text-slate-400"/> 
             <span className="hidden sm:inline">INDEX: </span>20
           </div>
         </header>
