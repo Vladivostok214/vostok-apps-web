@@ -7,6 +7,7 @@ import {
 import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
+import AudioArchive from './components/AudioArchive';
 import Footer from './components/Footer';
 import InfoModal from './components/InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -831,7 +832,7 @@ function VostokTuner({ onBack }) {
 }
 
 // --- LANDING COMPONENTS ---
-function SoundScienceSection() {
+function SoundScienceSection({ onOpenArchive }) {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [history, setHistory] = useState([0]);
@@ -964,6 +965,20 @@ function SoundScienceSection() {
           />
         ))}
       </div>
+
+      {/* Botón Acceso Databank */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onOpenArchive}
+        className="mt-16 px-10 py-4 bg-white/5 border border-cyan-500/20 rounded-full flex items-center gap-4 group transition-all hover:bg-cyan-500/10 hover:border-cyan-500/40 z-10"
+      >
+        <Database className="w-5 h-5 text-cyan-400 group-hover:animate-pulse" />
+        <div className="flex flex-col items-start">
+          <span className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.3em]">Explorar Base de Datos</span>
+          <span className="text-xs font-bold text-white uppercase tracking-widest">Audio Archive Databank</span>
+        </div>
+      </motion.button>
     </section>
   );
 }
@@ -1137,6 +1152,7 @@ export default function App() {
       {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
       {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
+      {view === 'audioarchive' && <AudioArchive onClose={() => setView('home')} />}
 
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
       <InfoModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} type={infoType} />
@@ -1286,7 +1302,7 @@ export default function App() {
         </motion.div>
       </section>
 
-      <SoundScienceSection />
+      <SoundScienceSection onOpenArchive={() => handleSetView('audioarchive')} />
 
       <section id="herramientas" className="py-24 relative px-8 bg-black z-10">
         <div className="max-w-7xl mx-auto">
