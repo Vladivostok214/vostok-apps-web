@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Pause, Play, Mic } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Mic, Maximize2, Minimize2 } from 'lucide-react';
 
 export default function SpectrumAnalyzer({ onBack }) {
   const [isRunning, setIsRunning] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [peakFreq, setPeakFreq] = useState("----");
+  const [peakMag, setPeakMag] = useState("--.-");
 
   const canvasRef = useRef(null);
   const waterfallCanvasRef = useRef(null);
@@ -12,6 +14,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   const analyser = useRef(null);
   const animationRef = useRef(null);
   const dataArray = useRef(null);
+  const smoothedData = useRef(null);
   const frameCounterRef = useRef(0);
   const hoverRef = useRef({ active: false, x: 0, freq: 0, db: 0 });
 
@@ -19,6 +22,20 @@ export default function SpectrumAnalyzer({ onBack }) {
   const glRef = useRef(null);
   const programRef = useRef(null);
   const textureRef = useRef(null);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((e) => {
+        console.error(`Error attempting to enable full-screen mode: ${e.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
 
   const resize = useCallback(() => {
     if (!canvasRef.current || !waterfallCanvasRef.current) return;
@@ -60,38 +77,59 @@ export default function SpectrumAnalyzer({ onBack }) {
       uniform sampler2D u_audioData;
       uniform vec2 u_resolution;
       uniform float u_hoverX;
+      uniform float u_sampleRate;
       
       void main() {
         vec2 uv = v_texCoord;
         float x = uv.x;
         
-        // --- HD LOGARITHMIC MAPPING (20Hz - 20kHz) ---
-        // Aligns with musical perception and Vostok HD-RTA standards
-        float logX = log2(1.0 + x * 63.0) / 6.0; 
-        float amp = texture2D(u_audioData, vec2(logX, 0.5)).r;
+        // --- VOSTOK HD-LOG MAPPING (20Hz - 20kHz) ---
+        float fmin = 20.0;
+        float fmax = 20000.0;
+        float freq = fmin * pow(fmax / fmin, x);
+        float u = 2.0 * freq / u_sampleRate;
         
-        // --- NOIR-TECH GRID SYSTEM ---
+        // Smooth sampling with texture interpolation
+        float amp = texture2D(u_audioData, vec2(u, 0.5)).r;
+        
+        // --- VOSTOK SPECTRAL TILT (Slope Compensation) ---
+        float tilt = pow(freq / 100.0, 0.25); 
+        amp *= tilt;
+        
+        // Dynamic Range (Compressed for better visibility)
+        amp = clamp(pow(amp, 0.8), 0.0, 1.0);
+        
+        // --- NOIR-TECH LOGARITHMIC GRID ---
         float grid = 0.0;
-        // Vertical lines (frequency markers)
-        if (mod(uv.x * u_resolution.x, u_resolution.x / 10.0) < 1.0) grid += 0.05;
-        // Horizontal lines (dB markers)
-        if (mod(uv.y * u_resolution.y, u_resolution.y / 5.0) < 1.0) grid += 0.05;
+        float markers[10];
+        markers[0] = 20.0; markers[1] = 50.0; markers[2] = 100.0; markers[3] = 200.0; 
+        markers[4] = 500.0; markers[5] = 1000.0; markers[6] = 2000.0; markers[7] = 5000.0; 
+        markers[8] = 10000.0; markers[9] = 20000.0;
+        
+        for(int i = 0; i < 10; i++) {
+            float markerX = log(markers[i] / fmin) / log(fmax / fmin);
+            float dist = abs(x - markerX) * u_resolution.x;
+            grid += 0.12 * exp(-0.15 * dist * dist); // Refined glow
+        }
+        
+        // Horizontal magnitude grid
+        if (mod(uv.y * 6.0, 1.0) < 0.01) grid += 0.03;
 
         // --- SPECTRUM RENDER ---
         float mask = step(uv.y, amp * 0.85 + 0.05);
         
-        // Vostok Neon Gradient
-        vec3 color = mix(vec3(0.01, 0.4, 0.5), vec3(0.22, 1.0, 0.08), amp);
+        // Refined Vostok Gradient (Cyan to Vostok Green)
+        vec3 color = mix(vec3(0.0, 0.4, 0.6), vec3(0.22, 1.0, 0.08), amp);
         
-        // CRT Scanline
-        float scanline = sin(uv.y * u_resolution.y * 0.5) * 0.04;
+        // Subtle CRT Scanline
+        float scanline = sin(uv.y * u_resolution.y * 0.8) * 0.03;
         
-        // Laser Trace (Top edge of the spectrum)
-        float edge = smoothstep(0.01, 0.0, abs(uv.y - (amp * 0.85 + 0.05)));
-        vec3 laserColor = vec3(0.2, 1.0, 0.0) * edge;
+        // Organic Laser Trace (Softer)
+        float edge = exp(-80.0 * abs(uv.y - (amp * 0.85 + 0.05)));
+        vec3 laserColor = vec3(0.3, 1.0, 0.2) * edge;
 
-        // Hover Crosshair
-        float crosshair = step(abs(uv.x - u_hoverX), 0.001) * 0.2;
+        // Subtle Hover Crosshair (Gaussian)
+        float crosshair = exp(-0.08 * abs(uv.x - u_hoverX) * u_resolution.x) * 0.2;
 
         vec3 finalColor = (color - scanline + grid + laserColor + crosshair) * mask + (vec3(grid + crosshair) * (1.0-mask));
         
@@ -148,21 +186,50 @@ export default function SpectrumAnalyzer({ onBack }) {
 
       analyser.current.getByteFrequencyData(dataArray.current);
 
-      // --- Peak Detection Logic ---
-      let maxVal = -1;
-      let maxIdx = -1;
+      if (!smoothedData.current) {
+        smoothedData.current = new Float32Array(dataArray.current.length);
+      }
+
+      // --- VOSTOK BALLISTICS: EXPONENTIAL SMOOTHING ---
+      const smoothing = 0.18; 
       for (let i = 0; i < dataArray.current.length; i++) {
-        if (dataArray.current[i] > maxVal) {
-          maxVal = dataArray.current[i];
-          maxIdx = i;
+        smoothedData.current[i] += (dataArray.current[i] - smoothedData.current[i]) * smoothing;
+      }
+
+      // --- VOSTOK PEAK DETECTION ---
+      let maxRawVal = -1;
+      let peakIdx = -1;
+      const sr = audioCtx.current.sampleRate;
+      const N = analyser.current.fftSize;
+      const minBin = Math.floor(20 * N / sr); 
+
+      for (let i = minBin; i < smoothedData.current.length; i++) {
+        if (smoothedData.current[i] > maxRawVal) {
+          maxRawVal = smoothedData.current[i];
+          peakIdx = i;
         }
       }
-      if (maxVal > 50) {
+
+      if (maxRawVal > 20 && peakIdx > 0 && peakIdx < smoothedData.current.length - 1) {
         frameCounterRef.current++;
-        if (frameCounterRef.current % 10 === 0) {
-           const freq = (maxIdx * audioCtx.current.sampleRate) / analyser.current.fftSize;
-           setPeakFreq(Math.round(freq));
+        if (frameCounterRef.current % 3 === 0) {
+           // Parabolic Interpolation
+           const y0 = smoothedData.current[peakIdx - 1];
+           const y1 = smoothedData.current[peakIdx];
+           const y2 = smoothedData.current[peakIdx + 1];
+           const offset = (y2 - y0) / (2 * (2 * y1 - y2 - y0) || 1);
+           const accurateFreq = ((peakIdx + offset) * sr) / N;
+           
+           setPeakFreq(Math.round(accurateFreq));
+           
+           // dBFS Calculation
+           const dbRange = analyser.current.maxDecibels - analyser.current.minDecibels;
+           const dbfs = analyser.current.minDecibels + (maxRawVal / 255) * dbRange;
+           setPeakMag(dbfs.toFixed(1));
         }
+      } else if (maxRawVal <= 20) {
+          setPeakFreq("----");
+          setPeakMag("--.-");
       }
 
       gl.useProgram(program);
@@ -170,27 +237,55 @@ export default function SpectrumAnalyzer({ onBack }) {
       const resLoc = gl.getUniformLocation(program, 'u_resolution');
       gl.uniform2f(resLoc, gl.canvas.width, gl.canvas.height);
       
+      const sampleRateLoc = gl.getUniformLocation(program, 'u_sampleRate');
+      gl.uniform1f(sampleRateLoc, audioCtx.current.sampleRate);
+      
       const hoverLoc = gl.getUniformLocation(program, 'u_hoverX');
-      gl.uniform1f(hoverLoc, hoverRef.current.active ? hoverRef.current.x / (gl.canvas.width / (window.devicePixelRatio || 1)) : -1.0);
+      const dpr = window.devicePixelRatio || 1;
+      const canvasWidth = gl.canvas.width / dpr;
+      gl.uniform1f(hoverLoc, hoverRef.current.active ? hoverRef.current.x / canvasWidth : -1.0);
 
       gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, dataArray.current.length, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, dataArray.current);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, smoothedData.current.length, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array(smoothedData.current));
       
-      gl.clearColor(0.01, 0.01, 0.01, 1);
+      gl.clearColor(0.005, 0.005, 0.005, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-      // Waterfall Render (Optimized Canvas2D Layer)
+      // Waterfall Render
       const wCanvas = waterfallCanvasRef.current;
       const wCtx = wCanvas.getContext('2d', { alpha: false });
       wCtx.drawImage(wCanvas, 0, 0, wCanvas.width, wCanvas.height - 1, 0, 1, wCanvas.width, wCanvas.height - 1);
       const row = wCtx.createImageData(wCanvas.width, 1);
+      const fmin = 20.0;
+      const fmax = 20000.0;
+
       for (let i = 0; i < wCanvas.width; i++) {
-          const val = dataArray.current[Math.floor((i / wCanvas.width) * dataArray.current.length)];
+          const x = i / wCanvas.width;
+          const freq = fmin * Math.pow(fmax / fmin, x);
+          const binIdxFloat = freq * N / sr;
+          const binIdx = Math.floor(binIdxFloat);
+          const v0 = smoothedData.current[Math.min(binIdx, dataArray.current.length - 1)];
+          
+          let norm = v0 / 255.0;
+          let contrastVal = Math.pow(norm, 1.4); 
+
           const idx = i * 4;
-          row.data[idx] = val * 0.1; 
-          row.data[idx+1] = val;     
-          row.data[idx+2] = 255 - val; 
+          let r, g, b;
+          if (contrastVal < 0.4) {
+            const t = contrastVal / 0.4;
+            r = 0; g = t * 80; b = 40 + t * 120;
+          } else if (contrastVal < 0.8) {
+            const t = (contrastVal - 0.4) / 0.4;
+            r = t * 60; g = 80 + t * 175; b = 160 - t * 160;
+          } else {
+            const t = (contrastVal - 0.8) / 0.2;
+            r = 60 + t * 195; g = 255; b = t * 255;
+          }
+
+          row.data[idx] = r;
+          row.data[idx+1] = g;
+          row.data[idx+2] = b;
           row.data[idx+3] = 255;
       }
       wCtx.putImageData(row, 0, 0);
@@ -206,11 +301,20 @@ export default function SpectrumAnalyzer({ onBack }) {
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
       });
       audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+      
+      const hp = audioCtx.current.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 20;
+      hp.Q.value = 0.7;
+
       analyser.current = audioCtx.current.createAnalyser();
-      analyser.current.fftSize = 2048; 
+      analyser.current.fftSize = 4096; 
+      analyser.current.minDecibels = -90;
+      analyser.current.maxDecibels = 0;
 
       const source = audioCtx.current.createMediaStreamSource(stream);
-      source.connect(analyser.current);
+      source.connect(hp);
+      hp.connect(analyser.current);
 
       dataArray.current = new Uint8Array(analyser.current.frequencyBinCount);
       
@@ -232,52 +336,154 @@ export default function SpectrumAnalyzer({ onBack }) {
     };
   }, [resize]);
 
+  const freqMarkers = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+
+  const [hoverData, setHoverData] = useState({ active: false, x: 0, y: 0, freq: 0, db: 0 });
+
+  const handleMouseMove = (e) => {
+    if (!canvasRef.current || !analyser.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const dpr = window.devicePixelRatio || 1;
+    const width = rect.width;
+    const fmin = 20.0;
+    const fmax = 20000.0;
+    
+    const freq = fmin * Math.pow(fmax / fmin, x / width);
+    
+    // Estimate dB at this frequency
+    const N = analyser.current.fftSize;
+    const sr = audioCtx.current?.sampleRate || 44100;
+    const binIdxFloat = freq * N / sr;
+    const binIdx = Math.floor(binIdxFloat);
+    
+    let db = -90;
+    if (smoothedData.current) {
+        const v0 = smoothedData.current[Math.min(binIdx, smoothedData.current.length - 1)];
+        const dbRange = analyser.current.maxDecibels - analyser.current.minDecibels;
+        db = analyser.current.minDecibels + (v0 / 255) * dbRange;
+    }
+
+    hoverRef.current = { active: true, x };
+    setHoverData({ active: true, x: e.clientX, y: e.clientY, freq, db });
+  };
+
+  const handleMouseLeave = () => {
+    hoverRef.current.active = false;
+    setHoverData(prev => ({ ...prev, active: false }));
+  };
+
   return (
-    <div className="fixed inset-0 bg-[#010101] z-[100] p-6 flex flex-col font-sans text-white overflow-hidden">
-      <header className="flex justify-between items-center mb-6 z-20 relative">
-        <button onClick={onBack} className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all shadow-2xl">
-            <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="text-center bg-white/5 border border-white/10 px-10 py-3 rounded-3xl">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#39FF14]">VOSTOK SPECTRUM HD</h2>
-            <div className="text-[7px] font-bold text-slate-500 tracking-widest uppercase mt-1">Noir-Tech WebGL Accelerator</div>
+    <div className="fixed inset-0 bg-[#010101] grid-bg z-[100] p-4 md:p-6 flex flex-col font-sans text-white overflow-hidden crt-scanlines">
+      {/* Floating Tooltip */}
+      {hoverData.active && (
+        <div 
+            className="fixed z-[200] pointer-events-none transition-all duration-75 ease-out"
+            style={{ left: hoverData.x + 20, top: hoverData.y - 40 }}
+        >
+            <div className="bg-black/90 border border-[#39FF14]/40 backdrop-blur-xl px-3 py-2 rounded-lg shadow-[0_0_20px_rgba(0,0,0,0.5)] flex flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                    <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Freq</span>
+                    <span className="font-mono text-xs font-black text-[#39FF14]">
+                        {hoverData.freq >= 1000 ? (hoverData.freq/1000).toFixed(2) + 'k' : Math.round(hoverData.freq)} 
+                        <span className="text-[8px] ml-0.5 opacity-70">Hz</span>
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Mag</span>
+                    <span className="font-mono text-xs font-black text-white">
+                        {hoverData.db.toFixed(1)}
+                        <span className="text-[8px] ml-0.5 opacity-50">dB</span>
+                    </span>
+                </div>
+            </div>
+            {/* Pointer circle */}
+            <div className="absolute -left-[20px] top-[40px] w-2 h-2 -translate-x-1/2 -translate-y-1/2 border border-[#39FF14] rounded-full shadow-[0_0_10px_#39FF14]"></div>
         </div>
-        <button onClick={() => setIsFrozen(!isFrozen)} className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center">
-            {isFrozen ? <Play className="w-5 h-5 text-[#39FF14]" /> : <Pause className="w-5 h-5" />}
+      )}
+
+      <header className="flex justify-between items-center mb-6 z-20 relative">
+        <div className="flex gap-3">
+            <button onClick={onBack} className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center hover:bg-white/10 transition-all shadow-xl active:scale-95">
+                <ArrowLeft className="w-5 h-5 text-slate-400" />
+            </button>
+            <button onClick={toggleFullscreen} className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl hidden md:flex items-center justify-center hover:bg-white/10 transition-all shadow-xl active:scale-95">
+                {isFullscreen ? <Minimize2 className="w-5 h-5 text-slate-400" /> : <Maximize2 className="w-5 h-5 text-slate-400" />}
+            </button>
+        </div>
+
+        <div className="text-center bg-white/[0.03] border border-white/10 backdrop-blur-md px-8 md:px-12 py-3 rounded-2xl shadow-xl flex flex-col items-center">
+            <h2 className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-[#39FF14] flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#39FF14] animate-pulse shadow-[0_0_8px_#39FF14]"></div>
+                VOSTOK SPECTRUM HD
+            </h2>
+            <div className="text-[7px] md:text-[8px] font-bold text-slate-500 tracking-[0.2em] uppercase mt-1">Escala Logarítmica • Motor Zero-Copy</div>
+        </div>
+
+        <button onClick={() => setIsFrozen(!isFrozen)} className={`w-12 h-12 ${isFrozen ? 'border-[#39FF14] bg-[#39FF14]/10' : 'bg-white/[0.03] border-white/10'} border backdrop-blur-md rounded-2xl flex items-center justify-center transition-all shadow-xl active:scale-95`}>
+            {isFrozen ? <Play className="w-5 h-5 text-[#39FF14]" /> : <Pause className="w-5 h-5 text-white" />}
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col gap-5 relative z-10">
-        <div className="flex-[3] relative bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <main className="flex-1 flex flex-col gap-5 relative z-10 min-h-0">
+        <div className="flex-[3] relative bg-black/40 border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl group">
             <canvas 
                 ref={canvasRef} 
-                onMouseMove={(e) => {
-                    const rect = canvasRef.current.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    hoverRef.current = { active: true, x };
-                }}
-                onMouseLeave={() => { hoverRef.current.active = false; }}
-                className="w-full h-full cursor-crosshair" 
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                className="w-full h-full cursor-none md:cursor-crosshair" 
             />
             
-            {/* Peak Telemetry Overlay */}
-            <div className="absolute top-6 left-8 bg-black/40 backdrop-blur-xl border border-white/5 px-6 py-3 rounded-2xl shadow-xl z-30 pointer-events-none">
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] block mb-1">Peak Freq</span>
-                <div className="font-mono text-3xl font-black text-white">{peakFreq}<span className="text-xs ml-1 text-[#39FF14]">Hz</span></div>
+            {/* Frequency Labels Bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-8 border-t border-white/5 bg-black/60 backdrop-blur-md flex items-center px-4 pointer-events-none">
+                <div className="relative w-full h-full">
+                    {freqMarkers.map(f => {
+                        const x = (Math.log(f / 20) / Math.log(20000 / 20)) * 100;
+                        return (
+                            <span key={f} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-[7px] font-black text-slate-600 uppercase tracking-tighter" style={{ left: `${x}%` }}>
+                                {f >= 1000 ? `${f/1000}k` : f}
+                            </span>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Peak Telemetry Overlays */}
+            <div className="absolute top-6 left-8 flex gap-4 pointer-events-none">
+                <div className="bg-black/60 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-2xl shadow-2xl transition-all">
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-1">Peak Freq</span>
+                    <div className="font-mono text-2xl md:text-3xl font-black text-white leading-none flex items-baseline gap-1">
+                        {peakFreq}
+                        <span className="text-[10px] text-[#39FF14]">Hz</span>
+                    </div>
+                </div>
+                <div className="bg-black/60 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-2xl shadow-2xl transition-all">
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-1">Nivel</span>
+                    <div className="font-mono text-xl md:text-2xl font-black text-white leading-none flex items-baseline gap-1">
+                        {peakMag}
+                        <span className="text-[10px] text-slate-400">dBFS</span>
+                    </div>
+                </div>
             </div>
 
             {!isRunning && (
-                <div onClick={startEngine} className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center cursor-pointer z-50">
-                    <Mic className="w-16 h-16 text-[#39FF14] mb-4 animate-pulse" />
-                    <span className="text-[10px] font-black tracking-[0.6em] text-[#39FF14] uppercase">INICIAR MOTOR WEBGL</span>
+                <div onClick={startEngine} className="absolute inset-0 bg-[#010101]/90 backdrop-blur-xl flex flex-col items-center justify-center cursor-pointer z-50">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-[#39FF14] blur-[40px] opacity-20 animate-pulse"></div>
+                        <Mic className="w-16 h-16 text-[#39FF14] mb-4 relative z-10" />
+                    </div>
+                    <span className="text-[10px] font-black tracking-[0.6em] text-[#39FF14] uppercase mt-4">INICIAR MOTOR WEBGL</span>
                 </div>
             )}
         </div>
-        <div className="h-40 relative bg-white/5 border border-white/10 rounded-[1.5rem] overflow-hidden">
+
+        <div className="flex-1 md:h-40 relative bg-black/40 border border-white/10 rounded-[1.5rem] overflow-hidden shadow-2xl">
             <canvas ref={waterfallCanvasRef} className="w-full h-full" />
-            <div className="absolute top-3 left-6 z-30 flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 backdrop-blur-md">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_cyan]"></div>
-                <span className="text-[8px] font-black text-white uppercase tracking-[0.3em] opacity-60">TOPOGRAFÍA SÓNICA</span>
+            <div className="absolute top-4 left-6 z-30 flex items-center gap-3 bg-black/60 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-md shadow-xl">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_cyan] animate-pulse"></div>
+                <span className="text-[8px] font-black text-white uppercase tracking-[0.3em]">Topografía Sónica</span>
             </div>
         </div>
       </main>

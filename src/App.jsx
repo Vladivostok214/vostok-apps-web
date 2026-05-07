@@ -14,7 +14,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
 import posthog from 'posthog-js';
 
-// --- VOSTOK DSP: ADVANCED PITCH DETECTION (YIN-OPTIMIZED) ---
+// --- VOSTOK SYSTEM: NON-INVASIVE HEALTH MONITOR ---
+function SystemHealth({ errors }) {
+  if (errors.length === 0) return null;
+  
+  const latestError = errors[errors.length - 1];
+  const color = latestError.type === 'CRITICAL' ? '#ef4444' : '#f59e0b';
+  
+  return (
+    <motion.div 
+      initial={{ y: 50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 50, opacity: 0 }}
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[600] flex flex-col items-center pointer-events-none"
+    >
+      <div className="bg-black/90 backdrop-blur-xl border border-white/10 px-6 py-2.5 rounded-full flex items-center gap-4 shadow-2xl">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}` }} />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color }}>{latestError.type}_ALERT</span>
+        </div>
+        <div className="w-px h-4 bg-white/10" />
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{latestError.message}</span>
+      </div>
+      <div className="mt-2 flex gap-1">
+        {errors.map((_, i) => (
+          <div key={i} className="h-0.5 w-4 rounded-full" style={{ backgroundColor: color, opacity: i === errors.length - 1 ? 1 : 0.2 }} />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// --- VOSTOK DSP: ADVANCED PITCH DETECTION (YIN-OPTIMIZED & ZERO-COPY) ---
+// Pre-allocated buffers to prevent GC pauses
+const MAX_BUFFER_SIZE = 8192;
+const sharedDownsampleBuffer = new Float32Array(MAX_BUFFER_SIZE / 4);
+const sharedYinBuffer = new Float32Array(MAX_BUFFER_SIZE / 2);
+const sharedDiffBuffer = new Float32Array(MAX_BUFFER_SIZE / 2);
+
 const autoCorrelate = (buf, sampleRate, isBass = false) => {
   const SIZE = buf.length;
 
@@ -25,23 +62,28 @@ const autoCorrelate = (buf, sampleRate, isBass = false) => {
   let activeSampleRate = sampleRate;
 
   if (isBass) {
-    const downsampled = new Float32Array(Math.floor(SIZE / 4));
-    for (let i = 0; i < downsampled.length; i++) {
-      downsampled[i] = (buf[i*4] + buf[i*4+1] + buf[i*4+2] + buf[i*4+3]) / 4;
+    const downsampledLen = Math.floor(SIZE / 4);
+    for (let i = 0; i < downsampledLen; i++) {
+      sharedDownsampleBuffer[i] = (buf[i*4] + buf[i*4+1] + buf[i*4+2] + buf[i*4+3]) / 4;
     }
-    activeBuf = downsampled;
+    activeBuf = sharedDownsampleBuffer.subarray(0, downsampledLen);
     activeSampleRate = sampleRate / 4;
   }
 
   const N = activeBuf.length;
-  const yinBuffer = new Float32Array(Math.floor(N / 2));
+  const halfN = Math.floor(N / 2);
+  const yinBuffer = sharedYinBuffer.subarray(0, halfN);
+  const diffBuffer = sharedDiffBuffer.subarray(0, halfN);
 
   // STEP 1: Difference Function
   for (let tau = 0; tau < yinBuffer.length; tau++) {
+    yinBuffer[tau] = 0;
     for (let j = 0; j < yinBuffer.length; j++) {
       const delta = activeBuf[j] - activeBuf[j + tau];
       yinBuffer[tau] += delta * delta;
     }
+    // Save original difference for unbiased parabolic interpolation
+    diffBuffer[tau] = yinBuffer[tau];
   }
 
   // STEP 2: Cumulative Mean Normalized Difference Function (CMNDF)
@@ -68,12 +110,13 @@ const autoCorrelate = (buf, sampleRate, isBass = false) => {
 
   if (period === -1) return -1;
 
-  // STEP 4: Parabolic Interpolation for sub-sample precision
+  // STEP 4: Parabolic Interpolation for sub-sample precision (UNBIASED)
+  // We use the pure difference function (diffBuffer) to avoid the downward slope of CMNDF
   let betterPeriod = period;
-  if (period > 0 && period < yinBuffer.length - 1) {
-    const s0 = yinBuffer[period - 1];
-    const s1 = yinBuffer[period];
-    const s2 = yinBuffer[period + 1];
+  if (period > 0 && period < diffBuffer.length - 1) {
+    const s0 = diffBuffer[period - 1];
+    const s1 = diffBuffer[period];
+    const s2 = diffBuffer[period + 1];
     betterPeriod = period + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
   }
 
@@ -1114,12 +1157,30 @@ export default function App() {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoType, setInfoType] = useState('faq');
   const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [systemErrors, setSystemErrors] = useState([]);
   const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
   const isIOS = typeof window !== 'undefined' && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
 
+  // Función para registrar errores de forma no invasiva
+  const reportError = useCallback((message, type = 'WARNING') => {
+    const id = Date.now();
+    setSystemErrors(prev => [...prev, { id, message, type }]);
+    // Auto-limpieza después de 5 segundos
+    setTimeout(() => {
+      setSystemErrors(prev => prev.filter(e => e.id !== id));
+    }, 5000);
+  }, []);
+
   useEffect(() => {
     initAnalytics();
-  }, []);
+    
+    // Captura global de errores no manejados
+    const handleGlobalError = (event) => {
+      reportError(event.message || 'Error de ejecución detectado', 'CRITICAL');
+    };
+    window.addEventListener('error', handleGlobalError);
+    return () => window.removeEventListener('error', handleGlobalError);
+  }, [reportError]);
 
   const handleContact = useCallback(() => {
     trackEvent('contact_click');
@@ -1148,6 +1209,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#010101] crt-scanlines text-white font-sans selection:bg-[#39FF14]/30 overflow-x-hidden grid-bg">
+      <AnimatePresence>
+        {systemErrors.length > 0 && <SystemHealth errors={systemErrors} />}
+      </AnimatePresence>
+      
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
       {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
       {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}

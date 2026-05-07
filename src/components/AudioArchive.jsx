@@ -193,12 +193,16 @@ export default function AudioArchive({ onClose }) {
     setExpandedId(isOpening ? id : null);
     
     if (isOpening) {
-      setTimeout(() => {
+      // Esperamos al frame de renderizado de React para que la altura sea calculada
+      requestAnimationFrame(() => {
         const element = document.getElementById(`card-${id}`);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          element.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' // Centrado vertical perfecto
+          });
         }
-      }, 150);
+      });
     }
   };
 
