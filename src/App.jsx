@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
   Smartphone, LayoutGrid, Plus, Minus, ArrowLeft, 
-  Music, Zap, Send, ChevronDown, Volume2
+  Music, Zap, Send, ChevronDown, Volume2, Terminal
 } from 'lucide-react';
 import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
 import AudioArchive from './components/AudioArchive';
+import ExperimentBlog from './components/ExperimentBlog';
 import Footer from './components/Footer';
 import InfoModal from './components/InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1218,6 +1219,7 @@ export default function App() {
       {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
       {view === 'audioarchive' && <AudioArchive onClose={() => setView('home')} />}
+      {view === 'blog' && <ExperimentBlog onBack={() => setView('home')} />}
 
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
       <InfoModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} type={infoType} />
@@ -1263,6 +1265,13 @@ export default function App() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => handleSetView('blog')} 
+            className="px-4 sm:px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <Terminal className="w-3.5 h-3.5 text-[#39FF14]" />
+            <span>Blog</span>
+          </button>
           {!isInstalled && (canInstall || canShowMobile) && (
             <button 
               onClick={handleInstall} 
@@ -1383,7 +1392,8 @@ export default function App() {
               { t: "Tuner", d: "AFINACIÓN DE ALTA FIDELIDAD CON DETECCIÓN DE TONO AVANZADA.", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
               { t: "TempoSense", d: "ANALIZADOR DE RITMO Y METRÓNOMO PROFESIONAL.", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
               { t: "Spectrum", d: "VISUALIZADOR DE ESPECTRO EN TIEMPO REAL. ANALIZA TUS FRECUENCIAS.", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
-              { t: "SPL Meter", d: "SONÓMETRO DE PRECISIÓN PARA MEDICIÓN DE PRESIÓN SONORA.", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') }
+              { t: "SPL Meter", d: "SONÓMETRO DE PRECISIÓN PARA MEDICIÓN DE PRESIÓN SONORA.", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') },
+              { t: "Blog", d: "REPORTE DE RENDIMIENTO, EXPERIMENTOS Y BITÁCORA TÉCNICA.", s: "NUEVO", c: "#39FF14", i: Terminal, action: () => handleSetView('blog') }
             ].map((app, i) => {
               const Icon = app.i;
               return (

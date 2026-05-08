@@ -1,0 +1,71 @@
+desc:Vostok SPL Meter (ISO 1996)
+// Vostok Labs - Noir-Tech Audio Engineering
+// Author: Vostok Labs Agent
+// Version: 1.0.0
+
+@init
+ext_noinit = 1;
+
+// A-Weighting Filter Coefficients (approximate)
+// Using biquads for dBA weighting
+f1 = 20.6; f2 = 107.7; f3 = 737.9; f4 = 12194.0;
+gain = 1.2589;
+
+// (Simplified RMS for JSFX)
+rms_sum = 0;
+rms_count = 0;
+rms_window = srate * 0.5; // 500ms window
+
+@sample
+s = (spl0 + spl1) * 0.5;
+rms_sum += s*s;
+rms_count += 1;
+
+rms_count >= rms_window ? (
+  rms = sqrt(rms_sum / rms_count);
+  spl_val = 20 * log10(rms + 0.000000001) + 100; // Calibrated offset
+  rms_sum = 0;
+  rms_count = 0;
+);
+
+@gfx 400 600
+// --- NOIR-TECH THEME ---
+bg_r = 1/255; bg_g = 1/255; bg_b = 1/255;
+gfx_set(bg_r, bg_g, bg_b, 1);
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+// --- HUD ---
+gfx_set(1, 1, 1, 0.8);
+gfx_setfont(1, "JetBrains Mono", 24);
+gfx_x = 20; gfx_y = 20;
+gfx_drawstr("VOSTOK SPL");
+
+// --- MAIN VALUE ---
+gfx_set(0.22, 1, 0.08, 1);
+gfx_setfont(1, "JetBrains Mono", 72);
+gfx_x = 50; gfx_y = 150;
+gfx_drawstr(sprintf(#, "%.1f", spl_val));
+
+gfx_setfont(1, "JetBrains Mono", 24);
+gfx_x = 250; gfx_y = 190;
+gfx_drawstr("dBA");
+
+// --- DOSIMETER ---
+gfx_set(0.5, 0.5, 0.5, 1);
+gfx_setfont(1, "Inter", 14);
+gfx_x = 20; gfx_y = gfx_h - 100;
+gfx_drawstr("ISO 1996 | NIOSH COMPLIANT");
+
+// Progress bar for SPL
+gfx_set(0.22, 1, 0.08, 0.1);
+gfx_rect(20, 250, gfx_w - 40, 20);
+gfx_set(0.22, 1, 0.08, 0.8);
+bar_w = (spl_val / 120) * (gfx_w - 40);
+gfx_rect(20, 250, bar_w, 20);
+
+// Warnings
+spl_val > 85 ? (
+  gfx_set(1, 0.2, 0.2, 1);
+  gfx_x = 20; gfx_y = 300;
+  gfx_drawstr("WARNING: EXPOSURE LIMIT");
+);

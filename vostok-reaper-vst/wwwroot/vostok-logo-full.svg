@@ -1,0 +1,18 @@
+<svg width="400" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="80" height="80" x="10" y="10" rx="12" fill="#050A05"/>
+  <defs>
+    <pattern id="grid-full" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#39FF14" stroke-width="0.5" opacity="0.1"/>
+    </pattern>
+  </defs>
+  <rect width="80" height="80" x="10" y="10" rx="12" fill="url(#grid-full)"/>
+  <rect width="80" height="80" x="10" y="10" rx="12" stroke="#39FF14" stroke-width="1" stroke-opacity="0.2"/>
+  <g transform="translate(20, 20) scale(2.5)">
+    <path d="M12 22V14" stroke="#39FF14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8 14V4" stroke="#39FF14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M16 14V4" stroke="#39FF14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8 14C8 16.2 9.8 18 12 18C14.2 18 16 16.2 16 14" stroke="#39FF14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="110" y="62" fill="white" style="font-family: 'JetBrains Mono', monospace; font-weight: 900; font-size: 42px; letter-spacing: 0.1em;">VOSTOK</text>
+  <text x="295" y="62" fill="#39FF14" style="font-family: 'JetBrains Mono', monospace; font-weight: 900; font-size: 42px; letter-spacing: 0.1em;">LABS</text>
+</svg>
