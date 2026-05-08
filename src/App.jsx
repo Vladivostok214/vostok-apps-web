@@ -1267,94 +1267,174 @@ export default function App() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => handleSetView('blog')} 
-            className="px-4 sm:px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-[#39FF14]/5 border border-[#39FF14]/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF14]/10 active:scale-95 transition-all flex items-center gap-2.5 text-[#39FF14]"
           >
-            <Terminal className="w-3.5 h-3.5 text-[#39FF14]" />
+            <Terminal className="w-3.5 h-3.5" />
             <span>Blog</span>
           </button>
           {!isInstalled && (canInstall || canShowMobile) && (
             <button 
               onClick={handleInstall} 
               aria-label="Descargar aplicación"
-              className="hidden sm:flex px-6 py-2.5 bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF14]/20 active:scale-95 transition-all"
+              className="hidden sm:flex px-6 py-2.5 bg-white/5 border border-white/10 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
             >
-              Descargar App
+              Instalar App
             </button>
           )}
-          <button 
-            onClick={handleContact} 
-            aria-label={'Contactar con Vostok Labs'}
-            className="px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
-          >
-            Contacto
-          </button>
         </div>
       </nav>
 
       {/* Hero Section */}
       <section className="min-h-screen flex flex-col items-center justify-start px-8 text-center relative pt-24 pb-8 z-10">
-        <div className="max-w-4xl flex flex-col items-center flex-grow justify-center">
-          {canShowMobile && (
-            <button 
-              onClick={handleInstall} 
-              className="sm:hidden mb-6 px-6 py-3 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
-            >
-              Instalar App
-            </button>
-          )}
+        <div className="max-w-7xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between flex-grow py-12">
+          
+          {/* Left Telemetry - Desktop Only */}
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mb-6"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="hidden lg:flex flex-col gap-10 text-left w-64"
           >
-            Analog Audio Laboratory
-          </motion.div>
-          
-          <motion.h1 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase"
-          >
-            Redefiniendo el <br/> Audio Digital
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-sm md:text-lg text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed tracking-tight"
-          >
-            Herramientas de grado de estudio con interfaces táctiles diseñadas para la creación musical precisa.
-          </motion.p>
-          
-          <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto mb-16">
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleSetView('tuner')} 
-              aria-label="Abrir Afinador Vostok"
-              className="flex-1 sm:flex-none px-8 sm:px-10 py-3 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
-              style={{ WebkitBackdropFilter: 'blur(20px)' }}
-            >
-              <TuningForkIcon className="w-6 h-6 text-[#39FF14] group-hover:scale-110 transition-transform" />
-              <div className="text-xl leading-none uppercase tracking-tighter flex items-center">
-                <span className="font-black">Vostok</span>
-                <span className="font-light opacity-70 ml-1">Tuner</span>
+            <div className="space-y-1">
+              <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2 font-mono">System_Health</div>
+              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#39FF14] animate-pulse shadow-[0_0_8px_#39FF14]" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-mono text-white uppercase font-black tracking-widest">Core_Active</span>
+                  <span className="text-[8px] font-mono text-slate-500 uppercase">Latency: 2.4ms</span>
+                </div>
               </div>
-            </motion.button>
-            
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => document.getElementById('herramientas')?.scrollIntoView({behavior: 'smooth'})} 
-              aria-label="Ver más herramientas"
-              className="flex-1 sm:flex-none px-8 sm:px-10 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-widest backdrop-blur-md flex items-center justify-center shadow-lg"
-              style={{ WebkitBackdropFilter: 'blur(20px)' }}
+            </div>
+
+            <div className="space-y-4 border-l-2 border-white/5 pl-6">
+              <div>
+                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Sample_Rate</div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">48.0 KHz / 24-Bit</div>
+              </div>
+              <div>
+                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Buffer_Size</div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">4096 Samples</div>
+              </div>
+              <div>
+                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">FFT_Window</div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Blackman-Harris</div>
+              </div>
+            </div>
+
+            <div className="pt-6">
+              <div className="text-[8px] font-black text-slate-800 uppercase tracking-[0.5em] mb-4 font-mono">Grid_Reference</div>
+              <svg viewBox="0 0 100 20" className="w-32 opacity-20"><path d="M0 10 H100 M10 5 V15 M30 5 V15 M50 0 V20 M70 5 V15 M90 5 V15" stroke="currentColor" fill="none" strokeWidth="0.5" /></svg>
+            </div>
+          </motion.div>
+
+          {/* Main Content */}
+          <div className="max-w-3xl flex flex-col items-center justify-center">
+            {canShowMobile && (
+              <button 
+                onClick={handleInstall} 
+                className="sm:hidden mb-6 px-6 py-3 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
+              >
+                Instalar App
+              </button>
+            )}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mb-6"
             >
-              Más herramientas
-            </motion.button>
+              Analog Audio Laboratory
+            </motion.div>
+            
+            <motion.h1 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase"
+            >
+              Redefiniendo el <br/> Audio Digital
+            </motion.h1>
+            
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-sm md:text-lg text-slate-400 max-w-xl mx-auto mb-12 leading-relaxed tracking-tight"
+            >
+              Herramientas de grado de estudio con interfaces táctiles diseñadas para la creación musical precisa.
+            </motion.p>
+            
+            <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto mb-16">
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleSetView('tuner')} 
+                aria-label="Abrir Afinador Vostok"
+                className="flex-1 sm:flex-none px-8 sm:px-10 py-4 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
+                style={{ WebkitBackdropFilter: 'blur(20px)' }}
+              >
+                <TuningForkIcon className="w-6 h-6 text-[#39FF14] group-hover:scale-110 transition-transform" />
+                <div className="text-xl lg:text-2xl leading-none uppercase tracking-tighter flex items-center">
+                  <span className="font-black">Vostok</span>
+                  <span className="font-light opacity-70 ml-1">Tuner</span>
+                </div>
+              </motion.button>
+              
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => document.getElementById('herramientas')?.scrollIntoView({behavior: 'smooth'})} 
+                aria-label="Ver más herramientas"
+                className="flex-1 sm:flex-none px-8 sm:px-10 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-widest backdrop-blur-md flex items-center justify-center shadow-lg"
+                style={{ WebkitBackdropFilter: 'blur(20px)' }}
+              >
+                Más herramientas
+              </motion.button>
+            </div>
           </div>
+
+          {/* Right Telemetry - Desktop Only */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="hidden lg:flex flex-col gap-10 text-right w-64 items-end"
+          >
+            <div className="space-y-1">
+              <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2 font-mono">Engine_Telemetry</div>
+              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-mono text-cyan-400 uppercase font-black tracking-widest">DSP_STABLE</span>
+                  <span className="text-[8px] font-mono text-slate-500 uppercase">Jitter: 0.02ms</span>
+                </div>
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_#06b6d4]" />
+              </div>
+            </div>
+
+            <div className="space-y-4 border-r-2 border-white/5 pr-6">
+              <div>
+                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Processor</div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Web_Audio_V2</div>
+              </div>
+              <div>
+                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Visual_Render</div>
+                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Canvas_Hardware_Accel</div>
+              </div>
+              <div>
+                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Build_Stamp</div>
+                <div className="text-[11px] font-mono text-slate-500 uppercase font-bold tracking-wider">2026.05.08_PRO</div>
+              </div>
+            </div>
+
+            <div className="pt-6 flex flex-col items-end">
+              <div className="text-[8px] font-black text-slate-800 uppercase tracking-[0.5em] mb-4 font-mono">Coordinate_System</div>
+              <div className="relative w-32 h-20 border border-white/5 rounded-lg overflow-hidden opacity-30">
+                <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+                <motion.div 
+                  animate={{ x: [0, 120, 0], y: [0, 80, 0] }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  className="w-1 h-1 bg-[#39FF14] rounded-full shadow-[0_0_5px_#39FF14]"
+                />
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* Indicador de Scroll optimizado para visibilidad Above-the-fold */}
@@ -1387,13 +1467,13 @@ export default function App() {
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mt-6 font-bold">— Vostok Lab</p>
             </div>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { t: "Tuner", d: "AFINACIÓN DE ALTA FIDELIDAD CON DETECCIÓN DE TONO AVANZADA.", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
-              { t: "TempoSense", d: "ANALIZADOR DE RITMO Y METRÓNOMO PROFESIONAL.", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
-              { t: "Spectrum", d: "VISUALIZADOR DE ESPECTRO EN TIEMPO REAL. ANALIZA TUS FRECUENCIAS.", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
-              { t: "SPL Meter", d: "SONÓMETRO DE PRECISIÓN PARA MEDICIÓN DE PRESIÓN SONORA.", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') },
-              { t: "Blog", d: "REPORTE DE RENDIMIENTO, EXPERIMENTOS Y BITÁCORA TÉCNICA.", s: "NUEVO", c: "#39FF14", i: Terminal, action: () => handleSetView('blog') }
+              { t: "Tuner", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
+              { t: "Tempo", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
+              { t: "Spectrum", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
+              { t: "SPL Meter", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') },
+              { t: "Blog", s: "NUEVO", c: "#39FF14", i: Terminal, action: () => handleSetView('blog') }
             ].map((app, i) => {
               const Icon = app.i;
               return (
@@ -1401,17 +1481,15 @@ export default function App() {
                   key={i} 
                   onClick={app.action}
                   aria-label={`Explorar Vostok ${app.t}`}
-                  className="text-left p-10 rounded-[3rem] bg-[#080808] border border-white/5 hover:border-[#39FF14]/20 transition-all flex flex-col group active:scale-[0.98]"
+                  className="text-left p-6 rounded-[2rem] bg-[#080808] border border-white/5 hover:border-[#39FF14]/20 transition-all flex flex-col group active:scale-[0.95] relative overflow-hidden"
                 >
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-8 border transition-transform group-hover:scale-110" style={{ backgroundColor: `${app.c}10`, borderColor: `${app.c}20` }}>
-                    <Icon className="w-6 h-6" style={{ color: app.c }} />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 border transition-transform group-hover:scale-110" style={{ backgroundColor: `${app.c}10`, borderColor: `${app.c}20` }}>
+                    <Icon className="w-5 h-5" style={{ color: app.c }} />
                   </div>
-                  <h3 className="text-xl tracking-widest uppercase mb-4 flex items-center">
-                    <span className="font-black">Vostok</span>
-                    <span className="font-light opacity-60 ml-1">{app.t}</span>
-                  </h3>
-                  <p className="text-slate-500 text-sm mb-8 leading-relaxed font-bold uppercase">{app.d}</p>
-                  <div className="mt-auto inline-flex self-start px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors font-bold" style={{ backgroundColor: `${app.c}10`, color: app.c, borderColor: `${app.c}20` }}>{app.s}</div>
+                  <div className="flex flex-col">
+                    <h3 className="text-xs tracking-[0.2em] uppercase font-black text-white group-hover:text-[#39FF14] transition-colors">{app.t}</h3>
+                    <div className="mt-2 inline-flex self-start px-3 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border transition-colors font-bold" style={{ backgroundColor: `${app.c}10`, color: app.c, borderColor: `${app.c}20` }}>{app.s}</div>
+                  </div>
                 </button>
               );
             })}
