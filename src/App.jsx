@@ -7,6 +7,7 @@ import {
 import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
+import ImpulseResponse from './ImpulseResponse';
 import AudioArchive from './components/AudioArchive';
 import ExperimentBlog from './components/ExperimentBlog';
 import Footer from './components/Footer';
@@ -1220,6 +1221,7 @@ export default function App() {
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
       {view === 'audioarchive' && <AudioArchive onClose={() => setView('home')} />}
       {view === 'blog' && <ExperimentBlog onBack={() => setView('home')} />}
+      {view === 'ir' && <ImpulseResponse onBack={() => setView('home')} />}
 
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
       <InfoModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} type={infoType} />
@@ -1467,12 +1469,13 @@ export default function App() {
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mt-6 font-bold">— Vostok Lab</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {[
               { t: "Tuner", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
               { t: "Tempo", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
               { t: "Spectrum", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
               { t: "SPL Meter", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') },
+              { t: "IR Measurer", s: "ALFA", c: "#39FF14", i: Activity, action: () => handleSetView('ir') },
               { t: "Blog", s: "NUEVO", c: "#39FF14", i: Terminal, action: () => handleSetView('blog') }
             ].map((app, i) => {
               const Icon = app.i;
