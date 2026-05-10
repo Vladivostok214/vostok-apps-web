@@ -74,7 +74,7 @@ class VostokDSPProcessor extends AudioWorkletProcessor {
 
     // Report SPL every ~42ms (2048 samples)
     if (this.sampleCount >= 2048) {
-      const noiseFloor = 20.0; // Noise floor for typical environment/mic
+      const noiseFloor = 0.0; // Optimized noise floor
       const dbLp = Math.max(noiseFloor, 20 * Math.log10(Math.max(this.lpFiltered, 1e-9)) + this.calibrationOffset);
       const rmsTotal = Math.sqrt(this.rmsSum / this.sampleCount);
       const dbLeq = Math.max(noiseFloor, 20 * Math.log10(Math.max(rmsTotal, 1e-9)) + this.calibrationOffset);

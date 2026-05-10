@@ -82,7 +82,13 @@ export default function SPLMeter({ onBack }) {
   // --- BASIC METER LOGIC ---
   const initAudio = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        } 
+      });
       audioContext.current = new AudioContext({ sampleRate: 48000 });
       await audioContext.current.audioWorklet.addModule('/vostok-dsp-processor.js');
       const source = audioContext.current.createMediaStreamSource(stream);

@@ -1167,10 +1167,18 @@ export default function App() {
 
   // --- MOBILE NAVIGATION: BACK BUTTON HANDLING ---
   const viewRef = useRef(view);
-  useEffect(() => { viewRef.current = view; }, [view]);
+  useEffect(() => { 
+    viewRef.current = view;
+    // PWA/Browser History Sync
+    if (view === 'home') {
+      window.history.pushState(null, '', window.location.pathname);
+    } else {
+      window.history.pushState({ view }, '', window.location.pathname);
+    }
+  }, [view]);
 
   useEffect(() => {
-    // Solo registramos el listener si estamos en un entorno Capacitor (Android/iOS)
+    // 1. Capacitor Hardware Back Button
     const backButtonHandler = CapacitorApp.addListener('backButton', () => {
       if (viewRef.current !== 'home') {
         setView('home');
@@ -1179,8 +1187,17 @@ export default function App() {
       }
     });
 
+    // 2. PWA/Browser PopState Handling
+    const handlePopState = (e) => {
+      if (viewRef.current !== 'home') {
+        setView('home');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+
     return () => {
       backButtonHandler.then(h => h.remove());
+      window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 
