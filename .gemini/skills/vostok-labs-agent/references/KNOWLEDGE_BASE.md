@@ -25,6 +25,7 @@
 - Chroma vector analysis for real-time key detection.
 
 ## Engineering Standards
-- Persistent Buffer reuse (`Float32Array`).
-- Hardware bypass for `getUserMedia` (raw audio).
-- React state stabilization (`useRef` + `useCallback`).
+- **DSP-HEALTH:** Always disable hardware processing (`echoCancellation`, `noiseSuppression`, `autoGainControl`) for scientific measurements (SPL, RTA). Mobile DSP is optimized for speech and destroys signal linearity.
+- **UX-STABILITY:** Implement dual-layer navigation. Use `@capacitor/app` for native hardware back-button and `history.pushState` + `popstate` for PWA/Browser sub-view management to prevent accidental app exits.
+- **Zero-Copy Performance:** Persistent Buffer reuse (`Float32Array`) in animation loops to avoid GC pressure.
+- **State Integrity:** Use `useRef` to mirror critical state (like `currentView`) inside async listeners to prevent stale closures.

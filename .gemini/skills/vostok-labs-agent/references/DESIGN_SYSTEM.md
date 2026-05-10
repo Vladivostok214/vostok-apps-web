@@ -16,7 +16,8 @@
   - **Interface:** `Inter`, weight `400-800`.
   - **Titles:** `uppercase`, `tracking-[0.4em]`.
 
-## Canvas Patterns
-- **Grid:** rgba(255, 255, 255, 0.02) linear gradients.
-- **Bars:** `hsla` gradients (Cyan to Blue/Lime).
-- **Interactive:** Neon Laser Crosshair (#39FF14), Floating Noir Tooltips.
+## Interaction & Navigation
+- **Navigation Feedback:** Transitions between views must use `AnimatePresence` (framer-motion) with `AnimateSlide` or `AnimateFade` patterns.
+- **Mobile Continuity:** Back-button interaction must never exit the application if a sub-view is active; always prioritize returning to the Dashboard (Home).
+- **Interactive Haptics:** Key events (Successful Tuning, Peak Clipping, Button Press) should trigger millimetric vibrations (10ms-20ms) where hardware supports it.
+- **Telemetry Display:** Real-time data must use `tabular-nums` and Mono fonts to avoid layout shift during value changes.
