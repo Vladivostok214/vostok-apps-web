@@ -5,20 +5,24 @@ const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || 'phc_placeholder';
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://us.posthog.com';
 
 export const initAnalytics = () => {
-  if (typeof window !== 'undefined' && POSTHOG_KEY !== 'phc_placeholder') {
-    if (!window._posthog_initialized) {
-      posthog.init(POSTHOG_KEY, {
-        api_host: POSTHOG_HOST,
-        ui_host: 'https://us.posthog.com',
-        persistence: 'memory', // Zero-Footprint, memory only
-        disable_session_recording: true,
-        autocapture: false, // Ensure no sensitive data is captured automatically
-        capture_pageview: false,
-        capture_pageleave: false,
-        disable_cookie: true, // No cookies
-      });
-      window._posthog_initialized = true;
+  try {
+    if (typeof window !== 'undefined' && POSTHOG_KEY !== 'phc_placeholder') {
+      if (!window._posthog_initialized) {
+        posthog.init(POSTHOG_KEY, {
+          api_host: POSTHOG_HOST,
+          ui_host: 'https://us.posthog.com',
+          persistence: 'memory', // Zero-Footprint, memory only
+          disable_session_recording: true,
+          autocapture: false, // Ensure no sensitive data is captured automatically
+          capture_pageview: false,
+          capture_pageleave: false,
+          disable_cookie: true, // No cookies
+        });
+        window._posthog_initialized = true;
+      }
     }
+  } catch (e) {
+    console.warn("[Vostok Analytics] Blocked or failed to initialize:", e);
   }
 };
 
@@ -42,4 +46,12 @@ export const trackEvent = (eventName, properties) => {
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+let supabaseInstance = null;
+try {
+  if (supabaseUrl && supabaseKey) {
+    supabaseInstance = createClient(supabaseUrl, supabaseKey);
+  }
+} catch (e) {
+  console.warn("[Vostok Supabase] Failed to initialize:", e);
+}
+export const supabase = supabaseInstance;

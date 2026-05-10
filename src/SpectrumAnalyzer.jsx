@@ -93,11 +93,12 @@ export default function SpectrumAnalyzer({ onBack }) {
         float amp = texture2D(u_audioData, vec2(u, 0.5)).r;
         
         // --- VOSTOK SPECTRAL TILT (Slope Compensation) ---
-        float tilt = pow(freq / 100.0, 0.25); 
+        float tilt = pow(freq / 100.0, 0.22); // Reduced tilt slightly
         amp *= tilt;
         
         // Dynamic Range (Compressed for better visibility)
-        amp = clamp(pow(amp, 0.8), 0.0, 1.0);
+        // Reduced global gain to provide headroom
+        amp = clamp(pow(amp * 0.65, 0.85), 0.0, 1.0); 
         
         // --- NOIR-TECH LOGARITHMIC GRID ---
         float grid = 0.0;
@@ -116,7 +117,8 @@ export default function SpectrumAnalyzer({ onBack }) {
         if (mod(uv.y * 6.0, 1.0) < 0.01) grid += 0.03;
 
         // --- SPECTRUM RENDER ---
-        float mask = step(uv.y, amp * 0.85 + 0.05);
+        // Changed 0.85 to 0.70 to ensure 25% headroom at the top
+        float mask = step(uv.y, amp * 0.70 + 0.05);
         
         // Refined Vostok Gradient (Cyan to Vostok Green)
         vec3 color = mix(vec3(0.0, 0.4, 0.6), vec3(0.22, 1.0, 0.08), amp);
@@ -125,7 +127,7 @@ export default function SpectrumAnalyzer({ onBack }) {
         float scanline = sin(uv.y * u_resolution.y * 0.8) * 0.03;
         
         // Organic Laser Trace (Softer)
-        float edge = exp(-80.0 * abs(uv.y - (amp * 0.85 + 0.05)));
+        float edge = exp(-80.0 * abs(uv.y - (amp * 0.70 + 0.05)));
         vec3 laserColor = vec3(0.3, 1.0, 0.2) * edge;
 
         // Subtle Hover Crosshair (Gaussian)
@@ -190,10 +192,15 @@ export default function SpectrumAnalyzer({ onBack }) {
         smoothedData.current = new Float32Array(dataArray.current.length);
       }
 
-      // --- VOSTOK BALLISTICS: EXPONENTIAL SMOOTHING ---
-      const smoothing = 0.18; 
+      // --- VOSTOK ANALOG BALLISTICS: ATTACK & RELEASE ---
+      const attack = 0.85; // Faster rise
+      const release = 0.12; // Slower fall for musicality
+      
       for (let i = 0; i < dataArray.current.length; i++) {
-        smoothedData.current[i] += (dataArray.current[i] - smoothedData.current[i]) * smoothing;
+        const target = dataArray.current[i];
+        const current = smoothedData.current[i];
+        const factor = target > current ? attack : release;
+        smoothedData.current[i] += (target - current) * factor;
       }
 
       // --- VOSTOK PEAK DETECTION ---

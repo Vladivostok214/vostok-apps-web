@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
   Smartphone, LayoutGrid, Plus, Minus, ArrowLeft, 
@@ -7,7 +7,8 @@ import {
 import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
-import ImpulseResponse from './ImpulseResponse';
+// Lazy loaded components
+const ImpulseResponse = lazy(() => import('./ImpulseResponse'));
 import AudioArchive from './components/AudioArchive';
 import ExperimentBlog from './components/ExperimentBlog';
 import Footer from './components/Footer';
@@ -417,7 +418,7 @@ function VostokTuner({ onBack }) {
   // Histéresis para estabilización visual y háptica
   useEffect(() => {
     if (signalStatus !== 'ACTIVE') {
-      if (isTuned) setIsTuned(false);
+      setIsTuned(false);
       return;
     }
 
@@ -1221,7 +1222,11 @@ export default function App() {
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
       {view === 'audioarchive' && <AudioArchive onClose={() => setView('home')} />}
       {view === 'blog' && <ExperimentBlog onBack={() => setView('home')} />}
-      {view === 'ir' && <ImpulseResponse onBack={() => setView('home')} />}
+      {view === 'ir' && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black z-[100] flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-[#39FF14] animate-ping" /></div>}>
+          <ImpulseResponse onBack={() => setView('home')} />
+        </Suspense>
+      )}
 
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
       <InfoModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} type={infoType} />
