@@ -15,6 +15,7 @@ import Footer from './components/Footer';
 import InfoModal from './components/InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
+import { App as CapacitorApp } from '@capacitor/app';
 import posthog from 'posthog-js';
 
 // --- VOSTOK SYSTEM: NON-INVASIVE HEALTH MONITOR ---
@@ -1163,6 +1164,25 @@ export default function App() {
   const [systemErrors, setSystemErrors] = useState([]);
   const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
   const isIOS = typeof window !== 'undefined' && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+
+  // --- MOBILE NAVIGATION: BACK BUTTON HANDLING ---
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  useEffect(() => {
+    // Solo registramos el listener si estamos en un entorno Capacitor (Android/iOS)
+    const backButtonHandler = CapacitorApp.addListener('backButton', () => {
+      if (viewRef.current !== 'home') {
+        setView('home');
+      } else {
+        CapacitorApp.exitApp();
+      }
+    });
+
+    return () => {
+      backButtonHandler.then(h => h.remove());
+    };
+  }, []);
 
   // Función para registrar errores de forma no invasiva
   const reportError = useCallback((message, type = 'WARNING') => {
