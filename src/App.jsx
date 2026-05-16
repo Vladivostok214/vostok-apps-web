@@ -15,6 +15,7 @@ import Footer from './components/Footer';
 import InfoModal from './components/InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
+import { syncData } from './lib/database';
 import { App as CapacitorApp } from '@capacitor/app';
 
 // --- VOSTOK SYSTEM: NON-INVASIVE HEALTH MONITOR ---
@@ -1061,6 +1062,10 @@ function ContactModal({ isOpen, onClose }) {
     } else {
       trackEvent('message_sent', { length: message.length });
       setStatus('success');
+      
+      // Intentar sincronización automática con el servidor local si existe
+      syncData();
+
       setMessage('');
       setEmail('');
       setTimeout(() => {
@@ -1212,6 +1217,7 @@ export default function App() {
 
   useEffect(() => {
     initAnalytics();
+    syncData(); // Sincronizar datos al iniciar si el servidor local está activo
     
     // Captura global de errores no manejados
     const handleGlobalError = (event) => {
