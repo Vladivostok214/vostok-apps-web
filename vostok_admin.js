@@ -6,7 +6,8 @@ const fs = require('fs');
 
 const app = express();
 const PORT = 5000;
-const DB_PATH = path.join(__dirname, 'vostok_admin.db');
+// Fix: Use process.cwd() to ensure the DB is created next to the .exe, not inside the pkg virtual filesystem
+const DB_PATH = path.join(process.cwd(), 'vostok_admin.db');
 
 app.use(cors());
 app.use(express.json());
