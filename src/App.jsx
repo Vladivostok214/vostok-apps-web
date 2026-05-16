@@ -16,7 +16,6 @@ import InfoModal from './components/InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, initAnalytics, trackEvent } from './lib/analytics';
 import { App as CapacitorApp } from '@capacitor/app';
-import posthog from 'posthog-js';
 
 // --- VOSTOK SYSTEM: NON-INVASIVE HEALTH MONITOR ---
 function SystemHealth({ errors }) {
@@ -590,7 +589,7 @@ function VostokTuner({ onBack }) {
       requestWakeLock();
       updateLoop();
 
-      posthog.capture('tuner_engine_active', {
+      trackEvent('tuner_engine_active', {
         $groups: { HARDWARE_SPEC: 'vostok_core_v1' },
         sample_rate: audioContextRef.current.sampleRate,
         base_latency_ms: audioContextRef.current.baseLatency ? audioContextRef.current.baseLatency * 1000 : 0,

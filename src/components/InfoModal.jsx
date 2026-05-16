@@ -22,8 +22,8 @@ const CONTENT_MAP = {
     content: (
       <div className="space-y-6">
         <div>
-          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Telemetría Zero-Footprint</h5>
-          <p>Utilizamos el modo 'Cookieless server hash' de PostHog. Solo capturamos telemetría técnica anónima (como el Sample Rate y la Base Latency) sin utilizar cookies ni rastreadores entre sesiones.</p>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Soberanía de Datos (Local-Only)</h5>
+          <p>Vostok Labs opera bajo una política estricta de Zero-Cloud. Las analíticas y reportes de rendimiento se almacenan exclusivamente en la base de datos local de su dispositivo (IndexedDB). No utilizamos cookies ni rastreadores de terceros.</p>
         </div>
         <div>
           <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Procesamiento Local (Hardware Bypass)</h5>
@@ -97,12 +97,12 @@ const CONTENT_MAP = {
     content: (
       <div className="space-y-6">
         <div>
-          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Privacidad de Datos Técnica</h5>
-          <p className="text-slate-400">Solo capturamos telemetría técnica anónima (como el Sample Rate y la Base Latency) para optimizar el motor DSP. El flujo de audio crudo nunca es grabado, transmitido ni enviado a servidores externos.</p>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Soberanía de Datos Técnica</h5>
+          <p className="text-slate-400">Capturamos telemetría técnica (como el Sample Rate y la Base Latency) únicamente para optimizar el motor DSP. Estos datos se almacenan localmente en su dispositivo. El flujo de audio crudo nunca es grabado, transmitido ni enviado a servidores externos.</p>
         </div>
         <div>
-          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Modo Cookieless</h5>
-          <p className="text-slate-400">Utilizamos el modo 'Cookieless server hash' de PostHog, garantizando un entorno de ejecución Zero-Footprint estricto, sin utilizar cookies de seguimiento ni rastreadores inter-sesión.</p>
+          <h5 className="font-mono text-[#39FF14] text-xs uppercase tracking-widest mb-2">Entorno Zero-Cloud</h5>
+          <p className="text-slate-400">Vostok Labs garantiza un entorno de ejecución estricto sin dependencias de servicios de terceros para el análisis de datos. No utilizamos cookies de seguimiento ni rastreadores inter-sesión.</p>
         </div>
       </div>
     )

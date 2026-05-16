@@ -1,57 +1,75 @@
-import posthog from 'posthog-js';
-import { createClient } from '@supabase/supabase-js';
+import { logTelemetry, logEvent, saveMessageLocally } from './database';
 
-const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || 'phc_placeholder';
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://us.posthog.com';
-
+/**
+ * Initializes the local logging system.
+ * Replaces PostHog initialization.
+ */
 export const initAnalytics = () => {
-  try {
-    if (typeof window !== 'undefined' && POSTHOG_KEY !== 'phc_placeholder') {
-      if (!window._posthog_initialized) {
-        posthog.init(POSTHOG_KEY, {
-          api_host: POSTHOG_HOST,
-          ui_host: 'https://us.posthog.com',
-          persistence: 'memory', // Zero-Footprint, memory only
-          disable_session_recording: true,
-          autocapture: false, // Ensure no sensitive data is captured automatically
-          capture_pageview: false,
-          capture_pageleave: false,
-          disable_cookie: true, // No cookies
-        });
-        window._posthog_initialized = true;
-      }
-    }
-  } catch (e) {
-    console.warn("[Vostok Analytics] Blocked or failed to initialize:", e);
-  }
+  console.info("[Vostok Labs] Local Analytics Engine Initialized. Zero-Cloud policy active.");
+  // Here we could start a background sync process if a server URL is provided
 };
 
+/**
+ * Captures hardware specifications locally.
+ * Replaces PostHog capture.
+ */
 export const captureVostokHardware = (audioContext) => {
-  if (!audioContext || typeof window === 'undefined' || POSTHOG_KEY === 'phc_placeholder') return;
+  if (!audioContext || typeof window === 'undefined') return;
 
   const isMobile = /iphone|ipad|ipod|android/.test(window.navigator.userAgent.toLowerCase());
-
-  posthog.capture('hardware_spec', {
+  const data = {
     sample_rate: audioContext.sampleRate,
     base_latency: audioContext.baseLatency || 0,
-    is_mobile: isMobile
-  });
+    is_mobile: isMobile,
+    user_agent: window.navigator.userAgent
+  };
+
+  logTelemetry('hardware_spec', data);
+  console.debug("[Vostok Telemetry] Hardware captured locally", data);
 };
 
-export const trackEvent = (eventName, properties) => {
-  if (POSTHOG_KEY !== 'phc_placeholder') {
-    posthog.capture(eventName, properties);
+/**
+ * Tracks events locally in the database.
+ * Replaces PostHog capture.
+ */
+export const trackEvent = (eventName, properties = {}) => {
+  logEvent(eventName, properties);
+  
+  // Also log to console in dev mode for visibility
+  if (import.meta.env.DEV) {
+    console.debug(`[Vostok Event] ${eventName}`, properties);
   }
 };
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-let supabaseInstance = null;
-try {
-  if (supabaseUrl && supabaseKey) {
-    supabaseInstance = createClient(supabaseUrl, supabaseKey);
-  }
-} catch (e) {
-  console.warn("[Vostok Supabase] Failed to initialize:", e);
-}
-export const supabase = supabaseInstance;
+/**
+ * Custom Log Collector for performance and crashes.
+ * Can be called during DSP processing or globally.
+ */
+export const captureError = (error, context = {}) => {
+  const errorData = {
+    message: error.message,
+    stack: error.stack,
+    context,
+    timestamp: new Date()
+  };
+  
+  logEvent('error_report', errorData);
+  console.error("[Vostok Crash Report]", errorData);
+};
+
+// Supabase Mock / Bridge
+// We keep the export name but point to local storage
+export const supabase = {
+  from: () => ({
+    insert: async (rows) => {
+      try {
+        for (const row of rows) {
+          await saveMessageLocally(row.user_mail, row.content);
+        }
+        return { error: null };
+      } catch (e) {
+        return { error: e };
+      }
+    }
+  })
+};
