@@ -2,10 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Terminal, Activity, BookOpen, ExternalLink, Clock,
-  Calendar, User, Edit3
+  Calendar, User, Mic, Cpu, Database, Shield, Volume2
 } from 'lucide-react';
 import { BLOG_POSTS } from '../lib/blog-posts';
 import VostokAdmin from './VostokAdmin';
+
+const ICON_MAP = {
+  Mic, Cpu, Database, Shield, Volume2, Activity
+};
 
 const CodeBlock = ({ code, language = "javascript" }) => (
   <div className="relative group my-8">
@@ -102,7 +106,7 @@ export default function ExperimentBlog({ onBack }) {
               </div>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-20">
                 {posts.map((post) => {
-                  const Icon = post.icon;
+                  const Icon = ICON_MAP[post.iconName] || Activity;
                   return (
                     <motion.button key={post.id} whileHover={{ y: -5 }} onClick={() => setSelectedPostId(post.id)} className="text-left bg-[#080808] border border-white/5 rounded-[2rem] p-8 flex flex-col group relative overflow-hidden transition-all hover:border-[#39FF14]/20">
                       <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity"><Icon className="w-24 h-24" style={{ color: post.color }} /></div>
@@ -121,7 +125,11 @@ export default function ExperimentBlog({ onBack }) {
             <motion.article key="post" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="max-w-4xl mx-auto px-6 py-16 sm:px-12 pb-32">
                 <div className="mb-20">
                   <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 text-[#39FF14] text-[9px] font-black uppercase tracking-[0.3em] mb-8">
-                    <selectedPost.icon className="w-3 h-3" /> {selectedPost.category}
+                    {(() => {
+                        const Icon = ICON_MAP[selectedPost.iconName] || Activity;
+                        return <Icon className="w-3 h-3" />;
+                    })()}
+                    <span className="ml-1">{selectedPost.category}</span>
                   </div>
                   <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-[0.9] mb-8">{selectedPost.title}</h2>
                   <div className="flex flex-wrap gap-8 text-slate-500">
