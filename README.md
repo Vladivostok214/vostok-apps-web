@@ -1,57 +1,90 @@
-# Vostok Labs: Engineering High-Fidelity Digital Audio (v1.4.0)
+# Vostok Labs: High-Fidelity Digital Audio Ecosystem (v1.4.0)
 
-Vostok Labs is a high-performance digital audio laboratory and ecosystem. This project implements a suite of studio-grade tools (Tuner, Spectrum, SPL, TempoSense), bridging the gap between web-based tools and native hardware experiences through advanced signal processing and optimized rendering techniques.
+**Vostok Labs** is a professional-grade digital audio laboratory designed for the web and mobile devices. It bridges the gap between scientific measurement tools and creative musical interfaces, prioritizing **low-latency performance**, **scientific accuracy**, and a **Noir-Tech aesthetic**.
 
-## Technical Architecture (v1.4.0 MEMS Optimized)
-
-The Vostok Labs ecosystem has evolved into a modular suite focused on three core pillars: performance, mobile hardware parity, and scientific integrity.
-
-### 1. Advanced DSP & Bitwise Optimization
-To maximize CPU efficiency on mobile devices, the audio engine has transitioned to low-level mathematical operations.
-*   **Bitwise DSP:** All integer calculations (downsampling, buffer indexing) utilize bitwise operators (`>>`, `<<`, `| 0`), bypassing floating-point overhead in V8/JSCore engines.
-*   **Zero-Copy Processing:** Leverages `Float32Array` pre-allocated buffers and `subarray` methods to eliminate Garbage Collection (GC) jitter.
-
-### 2. MEMS Microphone Integration & AOP
-Mobile MEMS microphones have specific characteristics handled by the **Vostok Hardware Release Protocol (VHRP)**:
-*   **AOP Management (Silent):** Real-time **Acoustic Overload Point** detection. Digital clipping is handled at the DSP level (frame discarding or internal limiting) to maintain a smooth UI while protecting scientific accuracy.
-*   **Interactive Latency:** Enforced `latencyHint: 'interactive'` to request minimal hardware buffer sizes from iOS/Android.
-*   **Hardware Cleanup (VHRP):** Absolute resource release (AudioContext, MediaStream tracks, WakeLock) on component unmount to prevent battery drain or camera/mic lock.
-
-### 3. Modular Suite & Visual Integrity
-The project architecture has been refactored for scalability:
-*   **Modularization:** Tools are isolated components (e.g., `Tuner.jsx`, `SpectrumAnalyzer.jsx`) for independent performance profiling.
-*   **High-Res Spectrum:** WebGL-powered 4096 FFT RTA with optimized bitwise waterfall rendering.
-*   **Noir-Tech Aesthetics:** CRT scanlines, glassmorphism, and hardware-accelerated shaders (`will-change`).
-
-## Technical Stack
-*   **Core:** React 19, Vite, Tailwind CSS 4.0
-*   **Rendering:** WebGL (Spectrum), Framer Motion (GPU Accelerated UI)
-*   **Audio Engine:** Web Audio API (YIN, HPS, Viterbi/HMM engines)
-*   **Distribution:** Capacitor (Mobile), PWA (Standalone)
+The ecosystem is built to operate under extreme hardware constraints, specifically optimized for **MEMS (Micro-Electro-Mechanical Systems)** microphones found in modern smartphones.
 
 ---
 
-# Vostok Labs: Ingeniería de Audio Digital de Alta Fidelidad (v1.4.0)
+## 1. Core Purpose & Philosophy
 
-Vostok Labs es un laboratorio y ecosistema de audio digital de alto rendimiento. Este proyecto implementa una suite de herramientas de grado de estudio (Afinador, Espectro, SPL, TempoSense), eliminando la brecha entre las aplicaciones web y las experiencias de hardware nativas mediante procesamiento avanzado y técnicas de renderizado optimizadas.
+Vostok Labs serves as a high-performance suite for musicians, sound engineers, and acoustic researchers. Our philosophy is rooted in three pillars:
+*   **Scientific Integrity:** Bypassing OS-level audio processing (Noise Suppression, AGC) to capture raw, linear signals.
+*   **Engineering Excellence:** Implementing "Near-the-Metal" JavaScript using bitwise operations and zero-copy memory management.
+*   **Noir-Tech Design:** A high-contrast, CRT-inspired interface that reduces eye strain in laboratory or studio environments while utilizing GPU-accelerated rendering.
 
-## Arquitectura Técnica (v1.4.0 Optimizado para MEMS)
+---
 
-El ecosistema de Vostok Labs ha evolucionado hacia una suite modular centrada en tres pilares: rendimiento, paridad con hardware móvil e integridad científica.
+## 2. The Modular Suite: Technical Deep-Dive
 
-### 1. DSP Avanzado y Optimización Bitwise
-Para maximizar la eficiencia de la CPU en dispositivos móviles, el motor de audio ha transicionado a operaciones matemáticas de bajo nivel.
-*   **DSP Bitwise:** Todos los cálculos de enteros (downsampling, índices de buffer) utilizan operadores de bits (`>>`, `<<`, `| 0`), evitando la sobrecarga de punto flotante en motores V8/JSCore.
-*   **Procesamiento Zero-Copy:** Uso de buffers `Float32Array` pre-asignados y métodos `subarray` para eliminar el jitter por Recolección de Basura (GC).
+Each tool in the Vostok suite is a standalone module with dedicated DSP engines.
 
-### 2. Integración de Micrófonos MEMS y AOP
-Los micrófonos MEMS móviles poseen características específicas gestionadas por el **Protocolo de Liberación de Hardware (VHRP)**:
-*   **Gestión de AOP (Silenciosa):** Detección en tiempo real del **Acoustic Overload Point**. El clipping digital se gestiona a nivel de DSP (descarte de frames o limitación interna) para mantener una interfaz fluida mientras se protege la precisión científica.
-*   **Latencia Interactiva:** Aplicación de `latencyHint: 'interactive'` para exigir al sistema (iOS/Android) el tamaño de buffer más pequeño posible.
-*   **VHRP (Limpieza de Hardware):** Liberación absoluta de recursos (AudioContext, MediaStream, WakeLock) al desmontar componentes para evitar drenaje de batería.
+### 🛰️ Vostok Tuner (Precision Pitch)
+*   **Algorithm:** Uses the **YIN Autocorrelation Algorithm** for stable pitch estimation.
+*   **DSP Features:** Parabolic interpolation for sub-cent precision and a bitwise-optimized inner loop.
+*   **AOP Protection:** Silently discards frames during digital clipping to prevent false harmonic detection.
+*   **Haptics:** Millimetric vibration (10ms) triggered upon 0-cent deviation.
 
-### 3. Suite Modular e Integridad Visual
-La arquitectura del proyecto ha sido refactorizada para escalabilidad:
-*   **Modularización:** Cada herramienta es un componente aislado (ej. `Tuner.jsx`, `SpectrumAnalyzer.jsx`) para perfilado de rendimiento independiente.
-*   **Espectro de Alta Resolución:** RTA de 4096 puntos FFT con aceleración WebGL y renderizado de cascada (waterfall) optimizado por bits.
-*   **Estética Noir-Tech:** Scanlines CRT, glassmorphism y shaders acelerados por hardware.
+### 🌊 Spectrum Analyzer (HD-RTA)
+*   **Engine:** 4096-point FFT (Fast Fourier Transform).
+*   **Rendering:** **WebGL-powered shaders** for 60FPS spectral mapping.
+*   **Mapping:** Logarithmic frequency scaling (20Hz - 20kHz) with custom "Sonic Topography" (Waterfall) rendering.
+*   **Optimization:** Bitwise truncation for real-time waterfall buffer processing.
+
+### 🎙️ SPL Meter (Scientific Sound Level)
+*   **Standards:** ISO 1996 compliant.
+*   **Weighting:** Real-time **A-Weighting (dBA)** filters implemented via high-precision IIR coefficients.
+*   **AudioWorklet:** Heavy lifting performed in a separate thread to ensure timing accuracy and prevent UI-induced jitter.
+
+### ⏱️ TempoSense (BPM & Key)
+*   **Analysis:** Dual-engine approach using **HPS (Harmonic Product Spectrum)** for fundamental isolation and **Viterbi/HMM (Hidden Markov Model)** for temporal smoothing.
+*   **Key Detection:** Chroma vector extraction optimized for harmonic stability.
+*   **Tap Tempo:** Low-latency event listener with jitter rejection logic.
+
+---
+
+## 3. Engineering Standards (Standardized v1.4.0)
+
+To achieve professional-grade results in the browser, Vostok Labs enforces the following technical protocols:
+
+### Vostok Hardware Release Protocol (VHRP)
+A mandatory cleanup lifecycle for all tools to ensure **Zero-Leak** performance:
+1.  **Immediate Closure:** Absolute destruction of `AudioContext` on unmount.
+2.  **Track Release:** Explicitly stopping `MediaStream` (Microphone) tracks to release system-level locks.
+3.  **WakeLock Management:** Releasing screen-stay-awake locks to preserve battery.
+
+### High-Performance DSP Standards
+*   **Bitwise Optimization:** Mathematical operations use `>>`, `<<`, and `| 0` to bypass floating-point overhead in JS engines (V8/JavaScriptCore).
+*   **Zero-Copy Logic:** Reusing `Float32Array` buffers via `subarray()` methods to eliminate Garbage Collection (GC) jitter.
+*   **Interactive Latency:** Forcing `latencyHint: 'interactive'` to request the smallest possible hardware buffers from the OS.
+
+---
+
+## 4. Technical Stack
+*   **Core:** React 19, Vite, Tailwind CSS 4.0.
+*   **Audio Engine:** Web Audio API, AudioWorklets.
+*   **Animation:** Framer Motion (GPU Accelerated).
+*   **Deployment:** Capacitor (Mobile), Vercel (Web/PWA).
+
+---
+
+# Vostok Labs: Ecosistema de Audio Digital de Alta Fidelidad (v1.4.0)
+
+**Vostok Labs** es un laboratorio de audio digital de grado profesional diseñado para la web y dispositivos móviles. Elimina la brecha entre las herramientas de medición científica y las interfaces musicales creativas, priorizando el **rendimiento de baja latencia**, la **precisión científica** y una **estética Noir-Tech**.
+
+## 1. Propósito y Filosofía
+Vostok Labs sirve como una suite de alto rendimiento para músicos e ingenieros. Nuestra filosofía se basa en la **Integridad Científica** (captura de audio raw), **Excelencia en Ingeniería** (procesamiento de bajo nivel) y **Diseño Noir-Tech** (interfaces de alto contraste inspiradas en laboratorios).
+
+## 2. La Suite Modular: Detalle Técnico
+*   **Vostok Tuner:** Algoritmo YIN con interpolación parabólica y protección AOP (Acoustic Overload Point).
+*   **Spectrum Analyzer:** RTA de 4096 puntos FFT con renderizado WebGL y Topografía Sónica.
+*   **SPL Meter:** Sonómetro dBA conforme a ISO 1996 usando AudioWorklets para precisión temporal.
+*   **TempoSense:** Análisis de tonalidad mediante HPS y suavizado Viterbi (HMM).
+
+## 3. Estándares de Ingeniería
+*   **Protocolo VHRP:** Limpieza absoluta de hardware al desmontar componentes (AudioContext, Micrófono, WakeLock).
+*   **Optimización Bitwise:** Uso de operaciones a nivel de bits para máxima eficiencia en CPUs móviles.
+*   **Latencia Interactiva:** Configuración de buffers mínimos para respuesta visual instantánea.
+
+---
+*Vostok Labs: Engineering the Future of Sound.*
