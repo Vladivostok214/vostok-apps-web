@@ -89,7 +89,10 @@ export default function SPLMeter({ onBack }) {
           autoGainControl: false
         } 
       });
-      audioContext.current = new AudioContext({ sampleRate: 48000 });
+      audioContext.current = new AudioContext({ 
+        sampleRate: 48000,
+        latencyHint: 'interactive'
+      });
       await audioContext.current.audioWorklet.addModule('/vostok-dsp-processor.js');
       const source = audioContext.current.createMediaStreamSource(stream);
       const dspNode = new AudioWorkletNode(audioContext.current, 'vostok-dsp-processor');
@@ -106,6 +109,9 @@ export default function SPLMeter({ onBack }) {
       };
       source.connect(dspNode);
       setStatus('ACTIVE');
+      
+      // Store stream for cleanup
+      audioContext.current.mediaStream = stream;
     } catch (e) { alert("Acceso denegado."); }
   };
 
@@ -116,8 +122,24 @@ export default function SPLMeter({ onBack }) {
       animId = requestAnimationFrame(update);
     };
     if (status === 'ACTIVE') update();
-    return () => cancelAnimationFrame(animId);
+    return () => {
+        cancelAnimationFrame(animId);
+    };
   }, [status]);
+
+  useEffect(() => {
+    return () => {
+      console.log('[Vostok System] Unmounting SPLMeter - Cleaning up...');
+      if (audioContext.current) {
+        if (audioContext.current.mediaStream) {
+            audioContext.current.mediaStream.getTracks().forEach(t => t.stop());
+        }
+        if (audioContext.current.state !== 'closed') {
+            audioContext.current.close();
+        }
+      }
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-[#050505] z-[100] p-4 md:p-6 flex flex-col font-sans text-white overflow-hidden crt-scanlines">

@@ -266,18 +266,26 @@ export default function SpectrumAnalyzer({ onBack }) {
       const row = wCtx.createImageData(wCanvas.width, 1);
       const fmin = 20.0;
       const fmax = 20000.0;
+      const sr_val = audioCtx.current.sampleRate;
+      const N_val = analyser.current.fftSize;
+      
+      let clipCounter = 0;
 
       for (let i = 0; i < wCanvas.width; i++) {
           const x = i / wCanvas.width;
           const freq = fmin * Math.pow(fmax / fmin, x);
-          const binIdxFloat = freq * N / sr;
-          const binIdx = Math.floor(binIdxFloat);
+          const binIdxFloat = freq * N_val / sr_val;
+          const binIdx = binIdxFloat | 0; // Bitwise trunc
           const v0 = smoothedData.current[Math.min(binIdx, dataArray.current.length - 1)];
           
-          let norm = v0 / 255.0;
+          if (v0 >= 250) {
+            clipCounter++;
+          }
+
+          let norm = v0 * 0.00392156862; // 1/255
           let contrastVal = Math.pow(norm, 1.4); 
 
-          const idx = i * 4;
+          const idx = i << 2; // i * 4
           let r, g, b;
           if (contrastVal < 0.4) {
             const t = contrastVal / 0.4;
@@ -302,12 +310,30 @@ export default function SpectrumAnalyzer({ onBack }) {
     loop();
   }, [isFrozen]);
 
+  const stopEngine = useCallback(() => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+    if (audioCtx.current) {
+      if (audioCtx.current.state !== 'closed') {
+        audioCtx.current.close().then(() => {
+          console.log('[Vostok Spectrum] AudioContext Closed');
+        });
+      }
+      audioCtx.current = null;
+    }
+    setIsRunning(false);
+  }, []);
+
   const startEngine = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
       });
-      audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx.current = new (window.AudioContext || window.webkitAudioContext)({
+        latencyHint: 'interactive'
+      });
       
       const hp = audioCtx.current.createBiquadFilter();
       hp.type = 'highpass';
@@ -328,6 +354,8 @@ export default function SpectrumAnalyzer({ onBack }) {
       initWebGL();
       setIsRunning(true);
       draw();
+      
+      analyser.current.mediaStream = stream;
     } catch (e) {
       console.error(e);
       alert("Acceso denegado al hardware.");
@@ -337,9 +365,15 @@ export default function SpectrumAnalyzer({ onBack }) {
   useEffect(() => {
     window.addEventListener('resize', resize);
     return () => {
+      console.log('[Vostok System] Unmounting Spectrum - Cleaning up...');
       window.removeEventListener('resize', resize);
-      cancelAnimationFrame(animationRef.current);
-      if (audioCtx.current) audioCtx.current.close();
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (analyser.current?.mediaStream) {
+        analyser.current.mediaStream.getTracks().forEach(t => t.stop());
+      }
+      if (audioCtx.current && audioCtx.current.state !== 'closed') {
+        audioCtx.current.close();
+      }
     };
   }, [resize]);
 
@@ -353,14 +387,12 @@ export default function SpectrumAnalyzer({ onBack }) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    const dpr = window.devicePixelRatio || 1;
     const width = rect.width;
     const fmin = 20.0;
     const fmax = 20000.0;
     
     const freq = fmin * Math.pow(fmax / fmin, x / width);
     
-    // Estimate dB at this frequency
     const N = analyser.current.fftSize;
     const sr = audioCtx.current?.sampleRate || 44100;
     const binIdxFloat = freq * N / sr;
@@ -384,7 +416,6 @@ export default function SpectrumAnalyzer({ onBack }) {
 
   return (
     <div className="fixed inset-0 bg-[#010101] grid-bg z-[100] p-4 md:p-6 flex flex-col font-sans text-white overflow-hidden crt-scanlines">
-      {/* Floating Tooltip */}
       {hoverData.active && (
         <div 
             className="fixed z-[200] pointer-events-none transition-all duration-75 ease-out"
@@ -406,7 +437,6 @@ export default function SpectrumAnalyzer({ onBack }) {
                     </span>
                 </div>
             </div>
-            {/* Pointer circle */}
             <div className="absolute -left-[20px] top-[40px] w-2 h-2 -translate-x-1/2 -translate-y-1/2 border border-[#39FF14] rounded-full shadow-[0_0_10px_#39FF14]"></div>
         </div>
       )}
@@ -443,7 +473,6 @@ export default function SpectrumAnalyzer({ onBack }) {
                 className="w-full h-full cursor-none md:cursor-crosshair" 
             />
             
-            {/* Frequency Labels Bar */}
             <div className="absolute bottom-0 left-0 right-0 h-8 border-t border-white/5 bg-black/60 backdrop-blur-md flex items-center px-4 pointer-events-none">
                 <div className="relative w-full h-full">
                     {freqMarkers.map(f => {
@@ -457,7 +486,6 @@ export default function SpectrumAnalyzer({ onBack }) {
                 </div>
             </div>
 
-            {/* Peak Telemetry Overlays */}
             <div className="absolute top-6 left-8 flex gap-4 pointer-events-none">
                 <div className="bg-black/60 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-2xl shadow-2xl transition-all">
                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-1">Peak Freq</span>

@@ -6,26 +6,26 @@
 - **Core Engine:** Custom Audio processing (Zero-Copy implementation).
 - **Data Flow:** `requestAnimationFrame` loops (60 FPS) with manual buffer management.
 
+## Engineering Standards (v1.4.0 Optimized)
+- **VHRP Protocol:** Mandatory Hardware Release Protocol. Absolute cleanup of `AudioContext`, `MediaStream`, and `WakeLock` on unmount.
+- **Bitwise DSP Engine:** Mathematical operations moved to bit-level (`>>`, `<<`, `| 0`) to bypass floating-point overhead in V8/JSCore.
+- **AOP Management (Silent):** Acoustic Overload Point detection implemented to handle MEMS microphone clipping. Protection must be handled at the DSP level (frame discarding or internal limiting) without triggering visual UI alerts or interruptions. The Noir-Tech experience must remain smooth and cohesive.
+- **DSP-HEALTH:** Always disable hardware processing (`echoCancellation`, `noiseSuppression`, `autoGainControl`) for scientific measurements.
+- **Low-Latency:** Force `latencyHint: 'interactive'` for minimal hardware buffers.
+
 ## Scientific Standards
 ### 1. Vostok Tuner
-- Engine: Auto-correlation with hardware wake-lock.
+- Engine: Auto-correlation (YIN) with parabolic interpolation and AOP protection.
 - High-fidelity haptic feedback (10ms vibration on tune).
 
 ### 2. Spectrum Analyzer (HD-RTA)
 - Resolution: 4096 FFT points.
-- 1/f NRC (Noise/Response Compensation) filter.
+- WebGL rendering with Bitwise Waterfall processing.
 - Room Mode detection via spectral persistence tracking.
-- Sonic Topography (3D Waterfall) with relay shading.
 
 ### 3. SPL Meter
 - ISO 1996 compliant A-Weighting (dBA).
-- NIOSH-standard risk tracking (85dB/8h).
+- MEMS-clipping "OVERLOAD" visual indicator support.
 
 ### 4. TempoSense
-- Chroma vector analysis for real-time key detection.
-
-## Engineering Standards
-- **DSP-HEALTH:** Always disable hardware processing (`echoCancellation`, `noiseSuppression`, `autoGainControl`) for scientific measurements (SPL, RTA). Mobile DSP is optimized for speech and destroys signal linearity.
-- **UX-STABILITY:** Implement dual-layer navigation. Use `@capacitor/app` for native hardware back-button and `history.pushState` + `popstate` for PWA/Browser sub-view management to prevent accidental app exits.
-- **Zero-Copy Performance:** Persistent Buffer reuse (`Float32Array`) in animation loops to avoid GC pressure.
-- **State Integrity:** Use `useRef` to mirror critical state (like `currentView`) inside async listeners to prevent stale closures.
+- HPS + Viterbi (HMM) engine with frame-discarding AOP protection.

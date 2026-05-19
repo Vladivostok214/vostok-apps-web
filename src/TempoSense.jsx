@@ -92,7 +92,7 @@ export default function TempoSense({ onBack }) {
       const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
 
       const analyzeFrame = () => {
-        if (mode !== 'analyze') {
+        if (mode !== 'analyze' || !audioContext.current || audioContext.current.state === 'closed') {
             stream.getTracks().forEach(t => t.stop());
             setIsAnalyzing(false);
             return;
@@ -100,22 +100,37 @@ export default function TempoSense({ onBack }) {
 
         const tStart = performance.now();
         analyserRef.current.getFloatFrequencyData(freqData);
+
+        // --- AOP PROTECTION ---
+        let maxVal = -100;
+        for (let i = 0; i < freqData.length; i++) {
+          if (freqData[i] > maxVal) maxVal = freqData[i];
+        }
+        if (maxVal >= -1.0) { // Digital clipping threshold in dBFS
+          timerID.current = requestAnimationFrame(analyzeFrame);
+          return;
+        }
         
         // 1. HARMONIC PRODUCT SPECTRUM (HPS)
-        const hps = new Float32Array(bufferLength / 3);
-        for (let i = 0; i < hps.length; i++) {
-            const mag1 = Math.pow(10, freqData[i] / 20);
-            const mag2 = Math.pow(10, freqData[i * 2] / 20);
-            const mag3 = Math.pow(10, freqData[i * 3] / 20);
+        const hpsLen = bufferLength / 3 | 0;
+        const hps = new Float32Array(hpsLen);
+        let mag1, mag2, mag3;
+        for (let i = 0; i < hpsLen; i++) {
+            mag1 = Math.pow(10, freqData[i] * 0.05);
+            mag2 = Math.pow(10, freqData[i << 1] * 0.05);
+            mag3 = Math.pow(10, freqData[i * 3] * 0.05);
             hps[i] = mag1 * mag2 * mag3;
         }
 
         // 2. CHROMA EXTRACTION (Using HPS results)
         chroma.fill(0);
-        for (let i = 20; i < hps.length; i++) { // Start from ~100Hz
-          const freq = i * audioContext.current.sampleRate / analyserRef.current.fftSize;
+        const sr = audioContext.current.sampleRate;
+        const fftS = analyserRef.current.fftSize;
+        let freq, noteIndex;
+        for (let i = 20; i < hps.length; i++) { 
+          freq = i * sr / fftS;
           if (freq < 2000) {
-            const noteIndex = Math.round(12 * Math.log2(freq / 440) + 69) % 12;
+            noteIndex = Math.round(12 * Math.log2(freq * 0.00227272727) + 69) % 12; // 1/440
             chroma[noteIndex] += hps[i];
           }
         }
@@ -178,6 +193,7 @@ export default function TempoSense({ onBack }) {
       };
 
       analyzeFrame();
+      analyserRef.current.mediaStream = stream;
     } catch (e) {
       console.error(e);
       setIsAnalyzing(false);
@@ -186,8 +202,26 @@ export default function TempoSense({ onBack }) {
 
   useEffect(() => {
     if (mode === 'analyze') startAnalysis();
-    else setIsAnalyzing(false);
+    else {
+      setIsAnalyzing(false);
+      if (analyserRef.current?.mediaStream) {
+        analyserRef.current.mediaStream.getTracks().forEach(t => t.stop());
+      }
+    }
   }, [mode, startAnalysis]);
+
+  useEffect(() => {
+    return () => {
+      console.log('[Vostok System] Unmounting TempoSense - Cleaning up...');
+      cancelAnimationFrame(timerID.current);
+      if (analyserRef.current?.mediaStream) {
+        analyserRef.current.mediaStream.getTracks().forEach(t => t.stop());
+      }
+      if (audioContext.current && audioContext.current.state !== 'closed') {
+        audioContext.current.close();
+      }
+    };
+  }, []);
 
   const handleTap = () => {
     const now = Date.now();
