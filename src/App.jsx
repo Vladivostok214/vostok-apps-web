@@ -15,6 +15,7 @@ import AudioArchive from './components/AudioArchive';
 import ExperimentBlog from './components/ExperimentBlog';
 import Footer from './components/Footer';
 import InfoModal from './components/InfoModal';
+import DiagnosticConsole from './components/DiagnosticConsole';
 import { motion, AnimatePresence } from 'framer-motion';
 import { initAnalytics, trackEvent } from './lib/analytics';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -290,6 +291,24 @@ export default function App() {
   const [infoType, setInfoType] = useState('faq');
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [systemErrors, setSystemErrors] = useState([]);
+  const [showDiagnosticConsole, setShowDiagnosticConsole] = useState(false);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef(null);
+
+  const handleSecretTap = () => {
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    
+    if (tapCountRef.current >= 5) {
+      setShowDiagnosticConsole(prev => !prev);
+      tapCountRef.current = 0;
+    } else {
+      tapTimerRef.current = setTimeout(() => {
+        tapCountRef.current = 0;
+      }, 1500); 
+    }
+  };
+
   const { canInstall, canShowMobile, installApp, isInstalled } = usePWAInstall();
   const isIOS = typeof window !== 'undefined' && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
 
@@ -413,7 +432,7 @@ export default function App() {
       </div>
 
       <nav className="fixed top-0 w-full z-40 px-8 py-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5 pt-[max(1.5rem,env(safe-area-inset-top))]" style={{ WebkitBackdropFilter: 'blur(16px)' }}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 cursor-pointer select-none" onClick={handleSecretTap}>
           <VostokLogo className="w-10 h-10" />
           <span className="text-xl tracking-tight uppercase tracking-widest flex items-center">
             <span className="font-black">Vostok</span>
@@ -599,6 +618,10 @@ export default function App() {
       </section>
 
       <Footer onInfoClick={handleInfoClick} />
+
+      <AnimatePresence>
+        {showDiagnosticConsole && <DiagnosticConsole onClose={() => setShowDiagnosticConsole(false)} currentView={view} />}
+      </AnimatePresence>
     </div>
   );
 }
