@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Save, Plus, Trash2, Edit3, Copy, Sparkles, Link, Globe, Type, Trash, ChevronDown } from 'lucide-react';
 
 const AVAILABLE_ICONS = ['Activity', 'Mic', 'Cpu', 'Database', 'Shield', 'Volume2', 'Zap', 'Music', 'Waves', 'Smartphone', 'Terminal'];
-const CATEGORIES = ['General', 'Hardware', 'Matemática', 'Memoria', 'Seguridad', 'Acústica', 'Sistemas', 'Investigación'];
+const CATEGORIES = ['Desarrollo Web', 'Investigación de Audio Digital', 'Bitácora de Experimentación', 'Data para Músicos', 'Miscelánea'];
 
 export default function VostokAdmin({ posts, onSave, onClose }) {
   const [editingPost, setSelectedPost] = useState(null);

@@ -1,11 +1,131 @@
-import { Mic, Cpu, Database, Shield, Volume2, Activity, Waves } from 'lucide-react';
+import { Mic, Cpu, Database, Shield, Volume2, Activity, Waves, Zap, Music, Terminal } from 'lucide-react';
+
+export const BLOG_CATEGORIES = [
+  "Desarrollo Web",
+  "Investigación de Audio Digital",
+  "Bitácora de Experimentación",
+  "Data para Músicos",
+  "Miscelánea"
+];
 
 export const BLOG_POSTS = [
+  {
+    "id": "post-alternate-tunings-deep-dive",
+    "title": "Afinaciones Alternativas: Explorando la Geometría del Tono",
+    "date": "20-05-2026",
+    "category": "Data para Músicos",
+    "readTime": "7 MIN",
+    "author": "Vladivostok",
+    "excerpt": "Desbloquea nuevas sonoridades y optimiza la física de tus cuerdas para dominar el mástil más allá del estándar.",
+    "iconName": "Music",
+    "color": "#39FF14",
+    "content": [
+      { "type": "p", "text": "La afinación estándar (E-A-D-G-B-E) es un compromiso histórico de versatilidad, pero no es la única forma de organizar el espectro sonoro en la guitarra. Las afinaciones alternativas son 'hacks' físicos que alteran la relación de intervalos entre cuerdas, permitiendo acordes imposibles y resonancias simpáticas que transforman el instrumento en una entidad acústica diferente." },
+      { "type": "h3", "text": "1. El Catálogo de Laboratorio: Estructuras y 'Vibes'" },
+      { "type": "p", "text": "Cada afinación tiene una huella dactilar armónica única. Aquí desglosamos las más influyentes según los estándares de ingeniería de tono de Stringjoy:" },
+      { "type": "p", "text": "• DROP D (D A D G B E): La puerta de entrada. Baja la 6ª cuerda un tono. Permite 'Power Chords' con un solo dedo y una respuesta de graves mucho más agresiva y profunda. Es el estándar del Rock moderno." },
+      { "type": "p", "text": "• DADGAD (D A D G A D): La joya del Folk y la música celta. Es una afinación 'suspendida' (Dsus4). Al no tener una 3ª definida, crea una atmósfera etérea y mística donde las cuerdas al aire actúan como drones constantes." },
+      { "type": "p", "text": "• OPEN G (D G D G B D): El alma del Blues del Delta. Un acorde de Sol Mayor al aire. Keith Richards (The Rolling Stones) la inmortalizó quitando la 6ª cuerda para dejar la tónica en la raíz, logrando ese 'punch' rítmico inconfundible." },
+      { "type": "h3", "text": "2. La Física de la Cuerda: Tensión y Calibre" },
+      { "type": "p", "text": "En Vostok Labs, entendemos que el audio digital empieza en la física analógica. Al bajar la afinación (detuning), la tensión de la cuerda disminuye drásticamente. Si la tensión cae por debajo de las 14-15 lbs, la cuerda pierde definición espectral y sustain." },
+      { "type": "p", "text": "MANDATO TÉCNICO: Por cada tono entero que bajes una cuerda, se recomienda subir un calibre (gauge). Si usas un .010 para Mi estándar, deberías considerar un .011 para Re si quieres que el Vostok Tuner mantenga una lectura de frecuencia estable y sin jitter por oscilación excesiva." },
+      { "type": "h3", "text": "3. Aplicación en Vostok Labs" },
+      { "type": "p", "text": "Utiliza el panel de 'Instrumentos' en el Vostok Tuner para cargar estos mismos presets. El sistema ajustará su centro de gravedad armónica para guiarte en el proceso de cambio de tensión, asegurando que tu guitarra esté lista para el análisis de modo en el Harmonic Radar." }
+    ],
+    "links": [
+      { "title": "Guía Definitiva de Afinaciones (Stringjoy)", "url": "https://stringjoy.com/alternate-tunings/", "source": "Stringjoy" },
+      { "title": "Calculadora de Tensión de Cuerdas", "url": "https://stringjoy.com/tension-calculator/", "source": "Stringjoy Tech" }
+    ]
+  },
+  {
+    "id": "post-tuner-guide",
+    "title": "Vostok Tuner: Guía de Calibración de Grado de Estudio",
+    "date": "20-05-2026",
+    "category": "Data para Músicos",
+    "readTime": "4 MIN",
+    "author": "Vladivostok",
+    "excerpt": "Cómo utilizar el monitor de cuerdas y las afinaciones alternativas para llevar tu instrumento a la perfección armónica.",
+    "iconName": "Music",
+    "color": "#39FF14",
+    "content": [
+      { "type": "p", "text": "El Vostok Tuner no es un afinador convencional de pinza; es un sensor de frecuencia basado en el algoritmo YIN de alta precisión. Para sacar el máximo provecho, debes entender su jerarquía visual y técnica." },
+      { "type": "h3", "text": "1. El Monitor de Cuerdas Contextual" },
+      { "type": "p", "text": "A diferencia de los afinadores cromáticos que solo muestran la nota más cercana, el Vostok Tuner entiende la anatomía de tu instrumento. Al seleccionar 'Guitarra' o 'Bajo', la columna lateral izquierda se convierte en tu mapa de ruta. Observa cómo la nota objetivo se resalta y aumenta su tamaño al ser detectada. Esto te permite afinar sin mirar la letra central, enfocándote en la tensión de cada cuerda." },
+      { "type": "h3", "text": "2. Dominando las Afinaciones Alternativas" },
+      { "type": "p", "text": "Explora el menú de instrumentos para acceder a afinaciones como DADGAD o Drop D. El radar detectará automáticamente el cambio de tensión y ajustará la frecuencia de referencia para cada cuerda. Recuerda: el indicador de 'Cents' en la parte inferior es tu auditor de precisión; busca el 0 absoluto para grabaciones profesionales." }
+    ],
+    "links": [
+      { "title": "Afinaciones Alternativas y su Física", "url": "https://en.wikipedia.org/wiki/Guitar_tunings", "source": "Wikipedia" }
+    ]
+  },
+  {
+    "id": "post-scale-sensor-guide",
+    "title": "Scale Sensor: El Método de Privación Sensorial",
+    "date": "20-05-2026",
+    "category": "Data para Músicos",
+    "readTime": "6 MIN",
+    "author": "Vladivostok",
+    "excerpt": "Entrena tu oído relativo y memoria muscular eliminando las muletas visuales con el Dark Practice Node.",
+    "iconName": "Activity",
+    "color": "#39FF14",
+    "content": [
+      { "type": "p", "text": "El Scale Sensor es la herramienta más exigente de Vostok Labs. Está diseñada bajo el principio de 'Dark Practice': si puedes tocar la escala sin mirar un diapasón virtual, la has dominado de verdad." },
+      { "type": "h3", "text": "1. El Ciclo de Validación Instantánea" },
+      { "type": "p", "text": "El sensor está calibrado para capturar tu intención musical al instante. No necesitas sostener la nota infinitamente; en cuanto el sistema detecta que has entrado en el territorio del semitono correcto (±50 cents), bloquea la nota y avanza. Esto permite practicar velocidades reales de ejecución." },
+      { "type": "h3", "text": "2. Uso Ético de la Guía Visual" },
+      { "type": "p", "text": "El icono '?' despliega un esquema estático de la caja (Box) seleccionada. Úsalo solo como referencia inicial. El objetivo final es completar las 12 notas de la sesión con el 100% de precisión espectral sin consultar la guía, confiando puramente en tu oído y en el mensaje 'Toca: [Nota]'." }
+    ],
+    "links": [
+      { "title": "Diccionario de Escalas de Guitarra", "url": "https://www.guitarscale.org/", "source": "GuitarScale" }
+    ]
+  },
+  {
+    "id": "post-radar-guide",
+    "title": "Harmonic Radar: Interpretando la Gravedad Tonal",
+    "date": "20-05-2026",
+    "category": "Data para Músicos",
+    "readTime": "5 MIN",
+    "author": "Vladivostok",
+    "excerpt": "Aprende a leer el Círculo de Quintas dinámico para identificar tonalidades y modos en cualquier grabación.",
+    "iconName": "Waves",
+    "color": "#39FF14",
+    "content": [
+      { "type": "p", "text": "El Harmonic Radar es tu brújula en el caos armónico. Utiliza un análisis de Chromagrama para mapear qué notas tienen más peso en una señal compleja." },
+      { "type": "h3", "text": "1. Lectura del Mapa de Calor (Heatmap)" },
+      { "type": "p", "text": "Observa el Círculo de Quintas. Las notas que brillan con más intensidad son las que forman el 'esqueleto' de la canción. Si ves que el brillo se concentra en C, G y D, estás en un entorno de Do Mayor o Sol Mayor. El radar traza líneas de gravedad hacia el centro para indicarte la tónica predominante." },
+      { "type": "h3", "text": "2. El Informe de Auditoría Armónica" },
+      { "type": "p", "text": "Al detener la escucha, el sistema desclasifica un informe profundo. No solo te da la tonalidad, sino que infiere el modo (ej. Lidio o Dórico) basándose en las notas secundarias detectadas. Este informe es ideal para analizar progresiones de acordes complejas o identificar escalas en solos de jazz." }
+    ],
+    "links": [
+      { "title": "Teoría del Círculo de Quintas", "url": "https://en.wikipedia.org/wiki/Circle_of_fifths", "source": "Wikipedia" }
+    ]
+  },
+  {
+    "id": "post-tempo-guide",
+    "title": "TempoSense: Estabilidad Rítmica y Análisis de BPM",
+    "date": "20-05-2026",
+    "category": "Data para Músicos",
+    "readTime": "3 MIN",
+    "author": "Vladivostok",
+    "excerpt": "Cómo utilizar el motor de Tap Tempo para sincronizar tu laboratorio con cualquier fuente rítmica.",
+    "iconName": "Zap",
+    "color": "#06b6d4",
+    "content": [
+      { "type": "p", "text": "La precisión rítmica es el 50% de la excelencia musical. TempoSense es el reloj de cuarzo de Vostok Labs, diseñado para detectar y mantener el pulso sin desviaciones." },
+      { "type": "h3", "text": "1. El Algoritmo de Promediado Rápido" },
+      { "type": "p", "text": "Al hacer 'Tap' sobre el objetivo, el sistema no solo mide el tiempo entre dos golpes, sino que calcula la media aritmética de tus últimos impactos. Para obtener un BPM estable, te recomendamos realizar al menos 4 o 5 toques constantes. El anillo de pulso visual te confirmará si tu 'timing' es sólido." },
+      { "type": "h3", "text": "2. Entrenamiento con Metrónomo" },
+      { "type": "p", "text": "Utiliza el metrónomo integrado para poner a prueba tu estabilidad. Un truco de laboratorio: detecta el tempo de una canción con el Tap, inicia el metrónomo y luego intenta tocar sobre él. Si el metrónomo de Vostok y la canción se mantienen sincronizados durante más de 30 segundos, tu detección ha sido perfecta." }
+    ],
+    "links": [
+      { "title": "La ciencia del Tempo Humano", "url": "https://www.nature.com/articles/s41598-020-68501-y", "source": "Nature" }
+    ]
+  },
   {
     "id": "post-1779171586461",
     "title": "Historia de la Digitalización",
     "date": "19-05-2026",
-    "category": "Investigación",
+    "category": "Investigación de Audio Digital",
     "readTime": "5 MIN",
     "author": "Vladivostok",
     "excerpt": "De los átomos a los bits: el salto cuántico matemático que permitió capturar el tiempo en una matriz de datos.",
@@ -30,7 +150,7 @@ export const BLOG_POSTS = [
       },
       {
         "type": "p",
-        "text": "Dos décadas más tarde, en 1948, Claude Shannon unificó estas ideas en su obra cumbre sobre la Teoría de la Información. El teorema de muestreo de Nyquist-Shannon dictó una ley inmutable: si deseas digitalizar un sonido y reconstruirlo perfectamente sin distorsión (aliasing), debes tomar muestras a una velocidad que sea al menos el doble de la frecuencia más alta que desees capturar."
+        "text": "Dos décadas más tarde, in 1948, Claude Shannon unificó estas ideas en su obra cumbre sobre la Teoría de la Información. El teorema de muestreo de Nyquist-Shannon dictó una ley inmutable: si deseas digitalizar un sonido y reconstruirlo perfectamente sin distorsión (aliasing), debes tomar muestras a una velocidad que sea al menos el doble de la frecuencia más alta que desees capturar."
       },
       {
         "type": "p",
@@ -42,7 +162,7 @@ export const BLOG_POSTS = [
       },
       {
         "type": "p",
-        "text": "El método universal bajo el cual funciona el audio digital hoy —incluyendo los buffers de Vostok Labs— se llama Modulación por Impulsos Codificados (PCM, por sus siglas en inglés). Fue inventado en 1937 por el ingeniero británico Alec Reeves mientras trabajaba en Francia."
+        "text": "El método universal bajo el cual funciona el audio digital hoy —incluyendo los buffers de Vostok Labs— se llama Modulación por Impulsos Codificados (PCM, por sus siglas en inglés). Fue inventado in 1937 por el ingeniero británico Alec Reeves mientras trabajaba en Francia."
       },
       {
         "type": "p",
@@ -98,7 +218,7 @@ export const BLOG_POSTS = [
     "id": "new-post-1779170726855",
     "title": "Historia de los Afinadores",
     "date": "19-05-2026",
-    "category": "General",
+    "category": "Bitácora de Experimentación",
     "readTime": "5 MIN",
     "author": "Vladivostok",
     "excerpt": "Desde los discos giratorios de 1936 hasta el algoritmo YIN: un recorrido por la evolución de la precisión musical.",
@@ -186,7 +306,7 @@ export const BLOG_POSTS = [
     "id": "mems-mic-tech",
     "title": "Micrófonos MEMS: El Diminuto Gigante en tu Bolsillo",
     "date": "19 de Mayo de 2026",
-    "category": "Hardware",
+    "category": "Investigación de Audio Digital",
     "readTime": "5 MIN",
     "author": "Vladivostok",
     "excerpt": "Descubre cómo un microchip de silicio puede 'oír' con calidad de estudio y por qué es el corazón de Vostok Labs.",
@@ -208,7 +328,7 @@ export const BLOG_POSTS = [
     "id": "bitwise-dsp-math",
     "title": "Bitwise DSP: Acelerando el Audio al Límite de la CPU",
     "date": "18 de Mayo de 2026",
-    "category": "Matemática",
+    "category": "Investigación de Audio Digital",
     "readTime": "5 MIN",
     "author": "Vladivostok",
     "excerpt": "Cómo logramos que el navegador procese audio a la velocidad de la luz usando trucos matemáticos de bajo nivel.",
@@ -229,7 +349,7 @@ export const BLOG_POSTS = [
     "id": "zero-copy-memory",
     "title": "Zero-Copy: El Secreto de los 60 FPS Constantes",
     "date": "18 de Mayo de 2026",
-    "category": "Memoria",
+    "category": "Desarrollo Web",
     "readTime": "4 MIN",
     "author": "Vladivostok",
     "excerpt": "¿Por qué las apps web a veces se 'traban'? Descubre cómo eliminamos los micro-tirones en Vostok Labs reciclando memoria.",
@@ -249,7 +369,7 @@ export const BLOG_POSTS = [
     "id": "vhrp-protocol",
     "title": "Protocolo VHRP: Respetando tu Hardware y tu Batería",
     "date": "18 de Mayo de 2026",
-    "category": "Seguridad",
+    "category": "Desarrollo Web",
     "readTime": "4 MIN",
     "author": "Vladivostok",
     "excerpt": "La ciencia detrás de apagar correctamente el micrófono y el sistema cuando dejas de usar las herramientas.",
@@ -269,7 +389,7 @@ export const BLOG_POSTS = [
     "id": "aop-management",
     "title": "Gestión de AOP: Protegiendo el 'Oído' de tu Smartphone",
     "date": "18 de Mayo de 2026",
-    "category": "Acústica",
+    "category": "Investigación de Audio Digital",
     "readTime": "5 MIN",
     "author": "Vladivostok",
     "excerpt": "Qué pasa cuando el sonido es demasiado fuerte para un micrófono minúsculo y cómo logramos estabilidad.",
@@ -289,7 +409,7 @@ export const BLOG_POSTS = [
     "id": "performance-audit-2026",
     "title": "Informe de Auditoría de Rendimiento: Navegadores Web y Ecosistema",
     "date": "8 de Mayo de 2026",
-    "category": "Sistemas",
+    "category": "Miscelánea",
     "readTime": "6 MIN",
     "author": "Vladivostok",
     "excerpt": "Análisis profundo sobre el impacto del consumo de CPU y RAM en entornos de alto rendimiento.",
