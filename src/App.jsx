@@ -9,6 +9,7 @@ import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
 import VostokTuner from './Tuner';
 const ScaleSensor = lazy(() => import('./ScaleSensor'));
+const HarmonicRadar = lazy(() => import('./HarmonicRadar'));
 import { TuningForkIcon, VostokLogo, GraphicIcon } from './components/VostokIdentity';
 // Lazy loaded components
 const ImpulseResponse = lazy(() => import('./ImpulseResponse'));
@@ -389,12 +390,26 @@ export default function App() {
       </AnimatePresence>
       
       {view === 'tuner' && <VostokTuner onBack={() => setView('home')} />}
-      {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
+      {view === 'tuner-bridge' && <VostokTuner onBack={() => setView('scales')} />}
       {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
       {view === 'scales' && (
         <Suspense fallback={<div className="fixed inset-0 bg-black z-[100] flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-[#39FF14] animate-ping" /></div>}>
-          <ScaleSensor onBack={() => setView('home')} />
+          <ScaleSensor 
+            onBack={() => setView('home')} 
+            onOpenTuner={() => setView('tuner-bridge')}
+          />
+        </Suspense>
+      )}
+      {view === 'tempo' && (
+        <TempoSense 
+          onBack={() => setView('home')} 
+          onOpenRadar={() => setView('radar')}
+        />
+      )}
+      {view === 'radar' && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black z-[100] flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-[#39FF14] animate-ping" /></div>}>
+          <HarmonicRadar onBack={() => setView('home')} />
         </Suspense>
       )}
       {view === 'audioarchive' && <AudioArchive onClose={() => setView('home')} />}
@@ -600,6 +615,7 @@ export default function App() {
                 {[
                   { t: "Tuner", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
                   { t: "Scale Sensor", s: "NUEVO", c: "#39FF14", i: Activity, action: () => handleSetView('scales') },
+                  { t: "Harmonic Radar", s: "NUEVO", c: "#39FF14", i: Waves, action: () => handleSetView('radar') },
                   { t: "Tempo", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
                   { t: "Spectrum", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
                   { t: "SPL Meter", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') },

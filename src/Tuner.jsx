@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Activity, Check, Settings, Upload, Plus, Minus, ArrowLeft, 
-  Music, Waves, Smartphone, LayoutGrid, X
+  Music, Waves, Smartphone, LayoutGrid, X, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from './lib/analytics';
 import { VostokLogo } from './components/VostokIdentity';
 import { useWakeLock } from './lib/vostok-hooks';
+import { TUNINGS, getNoteInfo } from './lib/vostok-music-db';
 
 const MAX_BUFFER_SIZE = 8192;
 const sharedDownsampleBuffer = new Float32Array(MAX_BUFFER_SIZE / 4);
@@ -32,49 +33,41 @@ const autoCorrelate = (buf, sampleRate, isBass = false) => {
   const yinBuffer = sharedYinBuffer.subarray(0, halfN);
   const diffBuffer = sharedDiffBuffer.subarray(0, halfN);
 
-  let tau = 0;
-  let j = 0;
-  let delta = 0;
-  let runningSum = 0;
-
-  for (tau = 0; tau < yinBuffer.length; tau++) {
+  for (let tau = 0; tau < yinBuffer.length; tau++) {
     yinBuffer[tau] = 0;
-    for (j = 0; j < yinBuffer.length; j++) {
-      delta = activeBuf[j] - activeBuf[j + tau];
+    for (let j = 0; j < yinBuffer.length; j++) {
+      const delta = activeBuf[j] - activeBuf[j + tau];
       yinBuffer[tau] += delta * delta;
     }
     diffBuffer[tau] = yinBuffer[tau];
   }
 
   yinBuffer[0] = 1;
-  runningSum = 0;
-  for (tau = 1; tau < yinBuffer.length; tau++) {
+  let runningSum = 0;
+  for (let tau = 1; tau < yinBuffer.length; tau++) {
     runningSum += yinBuffer[tau];
-    yinBuffer[tau] *= tau / runningSum;
+    yinBuffer[tau] *= tau / (runningSum || 0.0001);
   }
 
   let period = -1;
   const threshold = 0.15;
-  for (tau = 1; tau < yinBuffer.length; tau++) {
+  for (let tau = 1; tau < yinBuffer.length; tau++) {
     if (yinBuffer[tau] < threshold) {
-      while (tau + 1 < yinBuffer.length && yinBuffer[tau + 1] < yinBuffer[tau]) {
-        tau++;
-      }
+      while (tau + 1 < yinBuffer.length && yinBuffer[tau + 1] < yinBuffer[tau]) tau++;
       period = tau;
       break;
     }
   }
 
   if (period === -1) return -1;
-
   let betterPeriod = period;
   if (period > 0 && period < diffBuffer.length - 1) {
     const s0 = diffBuffer[period - 1];
     const s1 = diffBuffer[period];
     const s2 = diffBuffer[period + 1];
-    betterPeriod = period + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+    const denom = 2 * (2 * s1 - s2 - s0);
+    if (Math.abs(denom) > 0.00001) betterPeriod = period + (s2 - s0) / denom;
   }
-
   return activeSampleRate / betterPeriod;
 };
 
@@ -86,49 +79,6 @@ const INSTRUMENTS = [
   { id: 'bass', name: 'Bajo', icon: Waves },
   { id: 'ukulele', name: 'Ukelele', icon: Smartphone }
 ];
-
-const TUNING_PRESETS = {
-  STANDARD: [
-    { label: '6E', midi: 40 },
-    { label: '5A', midi: 45 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2B', midi: 59 },
-    { label: '1E', midi: 64 },
-  ],
-  DROP_D: [
-    { label: '6D', midi: 38 },
-    { label: '5A', midi: 45 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2B', midi: 59 },
-    { label: '1E', midi: 64 },
-  ],
-  OPEN_G: [
-    { label: '6D', midi: 38 },
-    { label: '5G', midi: 43 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2B', midi: 59 },
-    { label: '1D', midi: 62 },
-  ],
-  DADGAD: [
-    { label: '6D', midi: 38 },
-    { label: '5A', midi: 45 },
-    { label: '4D', midi: 50 },
-    { label: '3G', midi: 55 },
-    { label: '2A', midi: 57 },
-    { label: '1D', midi: 62 },
-  ],
-  HALF_STEP_DOWN: [
-    { label: '6Eb', midi: 39 },
-    { label: '5Ab', midi: 44 },
-    { label: '4Db', midi: 49 },
-    { label: '3Gb', midi: 54 },
-    { label: '2Bb', midi: 58 },
-    { label: '1Eb', midi: 63 },
-  ]
-};
 
 export default function VostokTuner({ onBack }) {
   const [isListening, setIsListening] = useState(false);
@@ -149,7 +99,6 @@ export default function VostokTuner({ onBack }) {
   const analyserRef = useRef(null);
   const highpassRef = useRef(null);
   const lowpassRef = useRef(null);
-  const compensationRef = useRef(null);
   const mediaStreamSourceRef = useRef(null);
   const rafIdRef = useRef(null);
   const audioBufferRef = useRef(null);
@@ -162,30 +111,19 @@ export default function VostokTuner({ onBack }) {
 
   useEffect(() => {
     if (!highpassRef.current || !lowpassRef.current) return;
-    let hpFreq = 70;
-    let lpFreq = 1500;
-    switch (selectedInstrument) {
-      case 'bass': hpFreq = 30; lpFreq = 800; break;
-      case 'ukulele': hpFreq = 150; lpFreq = 3000; break;
-      case 'chromatic': hpFreq = 20; lpFreq = 4000; break;
-      default: hpFreq = 70; lpFreq = 1500; break;
-    }
+    let hpFreq = selectedInstrument === 'bass' ? 30 : 70;
+    let lpFreq = selectedInstrument === 'bass' ? 800 : 1500;
+    if (selectedInstrument === 'ukulele') hpFreq = 150;
     const now = audioContextRef.current?.currentTime || 0;
     highpassRef.current.frequency.setTargetAtTime(hpFreq, now, 0.1);
     lowpassRef.current.frequency.setTargetAtTime(lpFreq, now, 0.1);
   }, [selectedInstrument]);
 
   useEffect(() => {
-    if (signalStatus !== 'ACTIVE') {
-      setIsTuned(false);
-      return;
-    }
+    if (signalStatus !== 'ACTIVE') { setIsTuned(false); return; }
     const absCents = Math.abs(cents);
-    if (!isTuned && absCents <= 2) {
-      setIsTuned(true);
-    } else if (isTuned && absCents > 6) {
-      setIsTuned(false);
-    }
+    if (!isTuned && absCents <= 2) setIsTuned(true);
+    else if (isTuned && absCents > 6) setIsTuned(false);
   }, [cents, isTuned, signalStatus]);
 
   useEffect(() => { refPitchRef.current = refPitch; }, [refPitch]);
@@ -197,36 +135,16 @@ export default function VostokTuner({ onBack }) {
     function loop(now) {
       if (!analyserRef.current || !audioContextRef.current || audioContextRef.current.state === 'closed') return;
       const shouldUpdateState = now - lastUpdate >= 50;
-      if (!audioBufferRef.current) {
-          audioBufferRef.current = new Float32Array(analyserRef.current.fftSize);
-      }
+      if (!audioBufferRef.current) audioBufferRef.current = new Float32Array(analyserRef.current.fftSize);
       analyserRef.current.getFloatTimeDomainData(audioBufferRef.current);
+      
       if (shouldUpdateState) {
-        // --- AOP MANAGEMENT: MEMS CLIPPING DETECTION ---
-        let clippingCount = 0;
-        let isOverloaded = false;
-        for (let i = 0; i < audioBufferRef.current.length; i++) {
-          if (Math.abs(audioBufferRef.current[i]) >= 0.98) {
-            clippingCount++;
-            if (clippingCount > 4) { isOverloaded = true; break; }
-          } else { clippingCount = 0; }
-        }
-
-        if (isOverloaded) {
-          setSignalStatus('SYS_OVERLOAD');
-          // Discard frame for pitch analysis to avoid false harmonics from square waves
-          lastUpdate = now;
-          rafIdRef.current = requestAnimationFrame(loop);
-          return;
-        }
-
         let rms = 0;
-        for (let i = 0; i < audioBufferRef.current.length; i++) {
-          rms += audioBufferRef.current[i] * audioBufferRef.current[i];
-        }
+        for (let i = 0; i < audioBufferRef.current.length; i++) rms += audioBufferRef.current[i] * audioBufferRef.current[i];
         rms = Math.sqrt(rms / audioBufferRef.current.length);
         const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
         const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate, selectedInstrumentRef.current === 'bass');
+        
         if (rmsDb < -45 || freq === -1) {
           setSignalStatus('SYS_IDLE');
           setCents(prev => Math.abs(prev) < 0.1 ? 0 : prev * 0.8);
@@ -241,20 +159,25 @@ export default function VostokTuner({ onBack }) {
           const midiFloat = 12 * (Math.log(avgFreq / refPitchRef.current) / Math.log(2)) + 69;
           let target = Math.round(midiFloat);
           let newDetectedString = null;
-          if (selectedInstrumentRef.current === 'guitar') {
-            const currentPreset = tuningPresetRef.current;
-            const matrix = TUNING_PRESETS[currentPreset] || TUNING_PRESETS.STANDARD;
-            let minDiff = Infinity;
-            let closestString = null;
-            for (const s of matrix) {
-              const diff = Math.abs(midiFloat - s.midi);
-              if (diff < minDiff) { minDiff = diff; closestString = s; }
-            }
-            if (minDiff < 1) { 
-              target = closestString.midi;
-              newDetectedString = closestString.label;
+
+          if (selectedInstrumentRef.current !== 'chromatic') {
+            const instrumentKey = selectedInstrumentRef.current.toUpperCase();
+            const currentTuning = TUNINGS[instrumentKey]?.[tuningPresetRef.current] || TUNINGS[instrumentKey]?.STANDARD;
+            
+            if (currentTuning) {
+              let minDiff = Infinity;
+              let closestStringIdx = -1;
+              currentTuning.strings.forEach((midi, idx) => {
+                const diff = Math.abs(midiFloat - midi);
+                if (diff < minDiff) { minDiff = diff; closestStringIdx = idx; }
+              });
+              if (minDiff < 1.5) { 
+                target = currentTuning.strings[closestStringIdx];
+                newDetectedString = currentTuning.labels[closestStringIdx];
+              }
             }
           }
+          
           const newCents = (midiFloat - target) * 100;
           setPitch(avgFreq);
           setCents(newCents);
@@ -270,103 +193,30 @@ export default function VostokTuner({ onBack }) {
 
   const startListening = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: 22050 } 
-      });
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ 
-        latencyHint: 'interactive',
-        sampleRate: 22050 
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
       if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 4096;
-      const compensationFilter = audioContextRef.current.createBiquadFilter();
-      compensationFilter.type = 'peaking';
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isIOS) {
-        compensationFilter.frequency.value = 6000;
-        compensationFilter.gain.value = -3;
-        compensationFilter.Q.value = 1.0;
-      } else {
-        compensationFilter.frequency.value = 150;
-        compensationFilter.gain.value = 3;
-        compensationFilter.Q.value = 0.7;
-      }
-      compensationRef.current = compensationFilter;
-      const highpassFilter = audioContextRef.current.createBiquadFilter();
-      highpassFilter.type = 'highpass';
-      highpassFilter.Q.value = 0.7;
-      highpassRef.current = highpassFilter;
-      const lowpassFilter = audioContextRef.current.createBiquadFilter();
-      lowpassFilter.type = 'lowpass';
-      lowpassFilter.Q.value = 0.7;
-      lowpassRef.current = lowpassFilter;
-      let hpFreq = 70, lpFreq = 1500;
-      if (selectedInstrument === 'bass') { hpFreq = 30; lpFreq = 800; }
-      else if (selectedInstrument === 'ukulele') { hpFreq = 150; lpFreq = 3000; }
-      else if (selectedInstrument === 'chromatic') { hpFreq = 20; lpFreq = 4000; }
-      highpassFilter.frequency.value = hpFreq;
-      lowpassFilter.frequency.value = lpFreq;
+      const hp = audioContextRef.current.createBiquadFilter(); hp.type = 'highpass'; highpassRef.current = hp;
+      const lp = audioContextRef.current.createBiquadFilter(); lp.type = 'lowpass'; lowpassRef.current = lp;
       mediaStreamSourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
-      mediaStreamSourceRef.current.connect(compensationFilter);
-      compensationFilter.connect(highpassFilter);
-      highpassFilter.connect(lowpassFilter);
-      lowpassFilter.connect(analyserRef.current);
-      setIsListening(true);
-      requestWakeLock();
-      updateLoop();
-      trackEvent('tuner_engine_active', {
-        sample_rate: audioContextRef.current.sampleRate,
-        is_mobile: /iPhone|Android/i.test(navigator.userAgent),
-        engine_status: 'STABLE_DSP'
-      });
-    } catch (e) { 
-      console.error("[Vostok DSP Error]", e);
-      alert(e.name === 'NotAllowedError' ? "Acceso denegado: Por favor, permite el uso del micrófono." : `Error: ${e.message}`);
-      setIsListening(false);
-    }
+      mediaStreamSourceRef.current.connect(hp); hp.connect(lp); lp.connect(analyserRef.current);
+      setIsListening(true); requestWakeLock(); updateLoop();
+    } catch (e) { alert("Error de micrófono"); setIsListening(false); }
   };
 
   const stopListening = useCallback(() => {
-    if (rafIdRef.current) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
+    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
     if (mediaStreamSourceRef.current) {
-        const stream = mediaStreamSourceRef.current.mediaStream;
-        if (stream) {
-          stream.getTracks().forEach(t => {
-            t.stop();
-            console.log(`[Vostok DSP] Track ${t.label} Stopped`);
-          });
-        }
+        mediaStreamSourceRef.current.mediaStream.getTracks().forEach(t => t.stop());
         mediaStreamSourceRef.current.disconnect();
-        mediaStreamSourceRef.current = null;
     }
-    if (audioContextRef.current) {
-      if (audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().then(() => {
-          console.log('[Vostok DSP] AudioContext Closed');
-        });
-      }
-      audioContextRef.current = null;
-    }
-    setIsListening(false);
-    setPitch(null);
-    setIsTuned(false);
-    releaseWakeLock();
+    if (audioContextRef.current) audioContextRef.current.close();
+    setIsListening(false); releaseWakeLock();
   }, [releaseWakeLock]);
 
-  useEffect(() => { 
-    return () => {
-      console.log('[Vostok System] Unmounting Tuner - Cleaning up...');
-      stopListening(); 
-    };
-  }, [stopListening]);
-
-  useEffect(() => {
-    if (isListening && isTuned && 'vibrate' in navigator) navigator.vibrate(10);
-  }, [isTuned, isListening]);
+  useEffect(() => { return () => stopListening(); }, [stopListening]);
 
   useEffect(() => {
     let animId;
@@ -374,8 +224,7 @@ export default function VostokTuner({ onBack }) {
       setVisualCents(prev => {
         const sensitivity = 0.35 - (smoothValue / 100) * 0.33;
         const diff = cents - prev;
-        if (Math.abs(diff) < 0.001) return cents;
-        return prev + diff * sensitivity;
+        return Math.abs(diff) < 0.001 ? cents : prev + diff * sensitivity;
       });
       animId = requestAnimationFrame(animate);
     };
@@ -388,29 +237,16 @@ export default function VostokTuner({ onBack }) {
     if (!file) return;
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+      const offlineCtx = new (window.OfflineAudioContext || window.webkitAudioContext)(1, 44100, 44100);
       const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer);
       const floatData = audioBuffer.getChannelData(0);
-      const start = Math.floor(floatData.length / 2);
-      const windowData = floatData.slice(start, start + 2048);
-      const freq = autoCorrelate(windowData, 44100);
-      if (freq !== -1 && freq > 20 && freq < 2000) {
-        setRefPitch(Math.round(freq));
-        alert(`Calibración Optimizada: Referencia ajustada a ${Math.round(freq)}Hz`);
-      } else {
-        alert("No se detectó un tono claro de calibración.");
-      }
-    } catch (err) {
-      alert("Error al procesar el archivo.");
-    }
+      const freq = autoCorrelate(floatData.slice(0, 2048), 44100);
+      if (freq !== -1) setRefPitch(Math.round(freq));
+    } catch (err) { alert("Error"); }
   };
 
   const note = targetMidi ? { n: noteStrings[targetMidi % 12], o: Math.floor(targetMidi / 12) - 1 } : { n: "-", o: "" };
-
-  const handleBack = () => {
-    stopListening();
-    onBack();
-  };
+  const activeTuning = TUNINGS[selectedInstrument.toUpperCase()]?.[tuningPreset] || TUNINGS[selectedInstrument.toUpperCase()]?.STANDARD;
 
   return (
     <div className={`fixed inset-0 bg-[#010101] z-[100] flex flex-col items-center overflow-hidden font-sans text-white transition-all duration-500 ${isTuned ? 'shadow-[inset_0_0_100px_rgba(57,255,20,0.15)] border-4 border-[#39FF14]/20 rounded-[2.5rem]' : ''}`}>
@@ -442,8 +278,19 @@ export default function VostokTuner({ onBack }) {
         <button onClick={() => setActivePanel('right')} className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all backdrop-blur-md hover:bg-white/10"><Settings className="w-5 h-5 text-slate-400" /></button>
       </header>
 
-      <div className="relative w-full max-w-[320px] h-36 mt-12 z-[130] shrink-0 flex items-center justify-center">
-        <svg viewBox="0 0 200 120" className="w-full h-full overflow-visible">
+      <div className="relative w-full max-w-[400px] h-36 mt-12 z-[130] shrink-0 flex items-center justify-center">
+        {/* String Reference Column (Left Only) */}
+        {activeTuning && (
+          <div className="absolute left-0 top-0 h-full flex flex-col justify-center gap-2 pr-6">
+            {activeTuning.labels.map((l) => (
+              <div key={l} className={`text-xs font-black font-mono transition-all duration-500 text-right ${detectedString === l ? 'text-[#39FF14] scale-150 drop-shadow-[0_0_10px_#39FF14]' : 'text-white/20'}`}>
+                {l}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <svg viewBox="0 0 200 120" className="w-[260px] h-full overflow-visible">
           <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" className="stroke-white/5" strokeWidth="12" strokeLinecap="round" />
           <path d="M 92 20 A 80 80 0 0 1 108 20" fill="none" className={`transition-all duration-500 ${isTuned ? 'stroke-[#39FF14] shadow-[0_0_15px_#39FF14]' : 'stroke-white/5'}`} strokeWidth="14" strokeLinecap="round" />
           <g style={{ transform: `rotate(${Math.max(-85, Math.min(85, visualCents * 1.6))}deg)`, transformOrigin: '100px 100px' }} className="will-change-transform">
@@ -460,7 +307,9 @@ export default function VostokTuner({ onBack }) {
               <div className={`text-[9rem] md:text-[11rem] font-mono font-black leading-none tracking-tighter flex items-start transition-all select-none will-change-transform ${isTuned ? 'text-[#39FF14] drop-shadow-[0_0_20px_#39FF14]' : 'text-white'}`}>{note.n}<span className="text-3xl md:text-4xl font-black opacity-50 mt-8 md:mt-10 ml-2">{note.o}</span></div>
               <div className={`transition-all duration-300 flex items-center justify-center h-full ${pitch && !isTuned && cents > 2 ? 'text-[#06b6d4] opacity-100 drop-shadow-[0_0_15px_#06b6d4]' : 'text-white/10 opacity-20'}`}><div className="text-5xl md:text-6xl font-black">▼</div></div>
             </div>
-            <div className="h-8 mt-2 flex items-center justify-center">{detectedString && <div className="text-[#39FF14] font-mono text-xl font-black tracking-widest">[ {detectedString} ]</div>}</div>
+            <div className="h-8 mt-2 flex items-center justify-center">
+               {detectedString && <div className="text-[#39FF14] font-mono text-xl font-black tracking-widest animate-in fade-in zoom-in duration-300">[ {detectedString} ]</div>}
+            </div>
             <div className={`mt-4 px-12 py-3 rounded-full border border-white/10 text-xl md:text-2xl font-mono font-black transition-colors ${Math.abs(cents) < 5 && pitch ? 'text-[#39FF14] border-[#39FF14]/30 bg-[#39FF14]/5' : 'text-slate-500 bg-white/5'}`}>{pitch ? `${cents > 0 ? '+' : ''}${Math.round(cents)} Cents` : "-- Cents"}</div>
           </div>
       </main>
@@ -474,23 +323,29 @@ export default function VostokTuner({ onBack }) {
                 <div className="flex flex-col"><span className="text-[10px] font-black text-slate-600 uppercase tracking-widest font-mono">Módulo</span><h3 className="text-xl font-black text-white uppercase tracking-tight font-mono">Instrumentos</h3></div>
                 <button onClick={() => setActivePanel('center')} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X className="w-6 h-6 text-slate-500" /></button>
               </div>
-              <div className="grid gap-3 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid gap-3 overflow-y-auto pr-2 custom-scrollbar text-white">
                 {INSTRUMENTS.map(inst => {
                   const Icon = inst.icon;
+                  const isSelected = selectedInstrument === inst.id;
                   return (
                     <div key={inst.id} className="flex flex-col gap-2">
-                      <button onClick={() => { setSelectedInstrument(inst.id); if (inst.id !== 'guitar') setActivePanel('center'); }} className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedInstrument === inst.id ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}>
-                        <Icon className={`w-5 h-5 relative z-10 ${selectedInstrument === inst.id ? 'text-[#39FF14]' : ''}`} />
+                      <button onClick={() => { setSelectedInstrument(inst.id); if (inst.id === 'chromatic') setActivePanel('center'); }} className={`flex items-center gap-4 p-5 rounded-3xl border transition-all relative overflow-hidden group ${isSelected ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}>
+                        <Icon className={`w-5 h-5 relative z-10 ${isSelected ? 'text-[#39FF14]' : ''}`} />
                         <span className="font-bold font-mono text-sm uppercase tracking-widest relative z-10">{inst.name}</span>
-                        {selectedInstrument === inst.id && <Check className="w-4 h-4 ml-auto text-[#39FF14] relative z-10" />}
-                      </button>
-                      {selectedInstrument === 'guitar' && inst.id === 'guitar' && (
-                        <div className="pl-4 border-l-2 border-[#39FF14]/30 ml-6 my-2 flex flex-col gap-2">
-                          {Object.keys(TUNING_PRESETS).map(preset => (
-                            <button key={preset} onClick={() => { setTuningPreset(preset); setActivePanel('center'); }} className={`p-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest text-left font-mono ${tuningPreset === preset ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-[#39FF14]' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}>{preset.replace(/_/g, ' ')}</button>
-                          ))}
+                        <div className="ml-auto flex items-center gap-2">
+                           {isSelected && <Check className="w-4 h-4 text-[#39FF14]" />}
+                           {inst.id !== 'chromatic' && <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isSelected ? 'rotate-180 text-white' : 'text-slate-700'}`} />}
                         </div>
-                      )}
+                      </button>
+                      <AnimatePresence>
+                        {isSelected && inst.id !== 'chromatic' && (
+                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="pl-4 border-l-2 border-[#39FF14]/30 ml-6 my-2 flex flex-col gap-2 overflow-hidden">
+                            {Object.keys(TUNINGS[inst.id.toUpperCase()] || {}).map(preset => (
+                              <button key={preset} onClick={() => { setTuningPreset(preset); setActivePanel('center'); }} className={`p-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest text-left font-mono ${tuningPreset === preset ? 'bg-[#39FF14]/10 border-[#39FF14]/40 text-[#39FF14]' : 'bg-white/5 border-transparent text-slate-700 hover:bg-white/10'}`}>{preset.replace(/_/g, ' ')}</button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })}
@@ -506,17 +361,17 @@ export default function VostokTuner({ onBack }) {
                 <div className="flex flex-col"><span className="text-[10px] font-black text-slate-600 uppercase tracking-widest font-mono">Calibración</span><h3 className="text-xl font-black text-white uppercase tracking-tight font-mono">Ajustes</h3></div>
                 <button onClick={() => setActivePanel('center')} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X className="w-6 h-6 text-slate-500" /></button>
               </div>
-              <div className="space-y-10 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-10 overflow-y-auto pr-2 custom-scrollbar text-white">
                 <section>
                   <label className="text-[10px] font-black text-slate-600 mb-6 block uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Referencia A4</label>
-                  <div className="flex items-center justify-between p-2 bg-white/5 rounded-full border border-white/10">
+                  <div className="flex items-center justify-between p-2 bg-white/5 rounded-full border border-white/10 text-white">
                     <button onClick={() => setRefPitch(p => p - 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Minus className="w-4 h-4" /></button>
                     <span className="text-2xl font-black font-mono text-white tabular-nums tracking-tighter">{refPitch}<span className="text-xs text-slate-500 ml-1 font-normal">Hz</span></span>
                     <button onClick={() => setRefPitch(p => p + 1)} className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center active:scale-90 transition-transform"><Plus className="w-4 h-4" /></button>
                   </div>
                 </section>
                 <section>
-                  <div className="flex justify-between mb-6"><label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Smoothing</label><span className="text-[10px] font-black font-mono text-[#39FF14] tracking-widest">{smoothValue}%</span></div>
+                  <div className="flex justify-between mb-6 text-white"><label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] border-l-2 border-[#39FF14] pl-3 font-mono">Smoothing</label><span className="text-[10px] font-black font-mono text-[#39FF14] tracking-widest">{smoothValue}%</span></div>
                   <input type="range" min="0" max="100" value={smoothValue} onChange={(e) => setSmoothValue(parseInt(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-full appearance-none accent-[#39FF14] cursor-pointer" />
                 </section>
                 <section className="pt-8 border-t border-white/5">
@@ -529,6 +384,13 @@ export default function VostokTuner({ onBack }) {
           </>
         )}
       </AnimatePresence>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .glow-text { text-shadow: 0 0 20px rgba(57, 255, 20, 0.4); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(57, 255, 20, 0.1); border-radius: 10px; }
+      `}} />
     </div>
   );
 }

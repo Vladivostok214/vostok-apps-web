@@ -28,7 +28,7 @@ export const SCALE_INTERVALS = {
 export const INSTRUMENTS = {
   GUITAR: { 
     name: 'Guitarra', 
-    tuning: [64, 59, 55, 50, 45, 40], // E4, B3, G3, D3, A2, E2
+    tuning: [64, 59, 55, 50, 45, 40], // E4, B3, G3, D3, A2, E2 (Standard)
     defaultOctaves: 2,
     threshold: 0.15 
   },
@@ -45,6 +45,27 @@ export const INSTRUMENTS = {
     threshold: 0.20 
   }
 };
+
+export const TUNINGS = {
+  GUITAR: {
+    STANDARD: { name: 'Standard E', strings: [64, 59, 55, 50, 45, 40], labels: ['1E', '2B', '3G', '4D', '5A', '6E'] },
+    DROP_D: { name: 'Drop D', strings: [64, 59, 55, 50, 45, 38], labels: ['1E', '2B', '3G', '4D', '5A', '6D'] },
+    DADGAD: { name: 'DADGAD', strings: [62, 57, 55, 50, 45, 38], labels: ['1D', '2A', '3G', '4D', '5A', '6D'] },
+    OPEN_G: { name: 'Open G', strings: [62, 59, 55, 50, 43, 38], labels: ['1D', '2B', '3G', '4D', '5G', '6D'] },
+    HALF_STEP_DOWN: { name: 'Eb Standard', strings: [63, 58, 54, 49, 44, 39], labels: ['1Eb', '2Bb', '3Gb', '4Db', '5Ab', '6Eb'] }
+  },
+  BASS: {
+    STANDARD: { name: 'Standard', strings: [43, 38, 33, 28], labels: ['1G', '2D', '3A', '4E'] },
+    DROP_D: { name: 'Drop D', strings: [43, 38, 33, 26], labels: ['1G', '2D', '3A', '4D'] },
+    FIVE_STRING: { name: '5-String', strings: [43, 38, 33, 28, 23], labels: ['1G', '2D', '3A', '4E', '5B'] }
+  },
+  UKULELE: {
+    STANDARD: { name: 'Standard', strings: [69, 64, 60, 67], labels: ['1A', '2E', '3C', '4G'] },
+    LOW_G: { name: 'Low G', strings: [69, 64, 60, 55], labels: ['1A', '2E', '3C', '4G'] }
+  }
+};
+
+export const ALTERNATIVE_TUNINGS = TUNINGS.GUITAR; // Backward compatibility for guitar logic
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
