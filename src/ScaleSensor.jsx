@@ -10,7 +10,7 @@ import { generateChallenge, mapNotesToFretboard } from './lib/scale-engine';
 import { ArrowLeft, Check, ChevronRight, Play } from 'lucide-react';
 
 const ScaleSensor = ({ onBack }) => {
-  const [status, setStatus] = useState('SYS_IDLE');
+  const [status, setStatus] = useState('SYS_IDLE'); // IDLE, COUNTDOWN, PLAYING, SUCCESS
   const [step, setStep] = useState(1);
   const [countdown, setCountdown] = useState(3);
   
@@ -35,7 +35,7 @@ const ScaleSensor = ({ onBack }) => {
   const audioCtxRef = useRef(null);
   const workletRef = useRef(null);
   const streamRef = useRef(null);
-  const telemetryRef = useRef(null);
+  const telemetryRef = useRef(null); // Local mirror if SAB fails
   const rafIdRef = useRef(null);
   const freqHistoryRef = useRef([]);
   const currentIndexRef = useRef(0);
@@ -48,14 +48,20 @@ const ScaleSensor = ({ onBack }) => {
 
   const isGuitar = instrument === 'GUITAR';
 
-  // 1. Prepare (Countdown)
+  const getFretboardPos = (midi) => {
+    const tunings = [64, 59, 55, 50, 45, 40];
+    const positions = [];
+    tunings.forEach((root, i) => {
+      const fret = midi - root;
+      if (fret >= 0 && fret <= 15) positions.push({ string: i + 1, fret });
+    });
+    return positions.sort((a, b) => b.string - a.string)[0];
+  };
+
   const initCountdown = () => {
     const isGuitarMode = instrument === 'GUITAR';
     const rawNotes = generateChallenge(rootNote, scaleType, octaves, isGuitarMode);
-    
-    // Enrich notes with smart physical mapping
     const enrichedNotes = mapNotesToFretboard(rawNotes, INSTRUMENTS[instrument].tuning);
-    
     setChallenge(enrichedNotes);
     setCurrentIndex(0);
     currentIndexRef.current = 0;
@@ -64,7 +70,6 @@ const ScaleSensor = ({ onBack }) => {
     setCountdown(3);
   };
 
-  // 2. Start (Audio)
   const startAudio = useCallback(async () => {
     try {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -76,9 +81,24 @@ const ScaleSensor = ({ onBack }) => {
 
       const source = audioCtxRef.current.createMediaStreamSource(streamRef.current);
       workletRef.current = new AudioWorkletNode(audioCtxRef.current, 'vostok-scale-processor');
-      const sab = new SharedArrayBuffer(2 * 4);
-      telemetryRef.current = new Float32Array(sab);
-      workletRef.current.port.postMessage({ type: 'SET_TELEMETRY_SAB', sab });
+
+      // HYBRID TELEMETRY SETUP
+      if (typeof SharedArrayBuffer !== 'undefined') {
+        const sab = new SharedArrayBuffer(2 * 4);
+        const sabArray = new Float32Array(sab);
+        telemetryRef.current = sabArray; // Direct reference
+        workletRef.current.port.postMessage({ type: 'SET_TELEMETRY_SAB', sab });
+        addLog("Mode: Zero-Copy SAB");
+      } else {
+        // Fallback Path
+        telemetryRef.current = new Float32Array(2); // Local Array mirror
+        workletRef.current.port.onmessage = (e) => {
+          if (e.data.type === 'FREQ') telemetryRef.current[0] = e.data.val;
+          if (e.data.type === 'VOL') telemetryRef.current[1] = e.data.val;
+        };
+        workletRef.current.port.postMessage({ type: 'ENABLE_FALLBACK' });
+        addLog("Mode: PostMessage Fallback");
+      }
 
       const silentGain = audioCtxRef.current.createGain();
       silentGain.gain.value = 0;
@@ -88,7 +108,6 @@ const ScaleSensor = ({ onBack }) => {
 
       monitorTelemetery(challenge);
       setStatus('SYS_PLAYING');
-      addLog("Sensor Activo");
     } catch (err) {
       addLog(`ERROR: ${err.message}`);
       setStatus('SYS_IDLE');
@@ -117,11 +136,9 @@ const ScaleSensor = ({ onBack }) => {
   }, []);
 
   const monitorTelemetery = (activeChallenge) => {
-    if (!telemetryRef.current) return;
-
     const loop = () => {
-      if (status === 'SYS_SUCCESS') return;
-
+      if (!telemetryRef.current) return;
+      
       const rawFreq = telemetryRef.current[0];
       const vol = telemetryRef.current[1];
       
@@ -205,7 +222,6 @@ const ScaleSensor = ({ onBack }) => {
 
   return (
     <div className="min-h-screen bg-[#020204] text-white font-mono p-4 md:p-8 flex flex-col relative overflow-hidden">
-      {/* Dev Telemetry */}
       <div className="fixed bottom-4 left-4 z-[100] bg-black/80 border border-white/5 p-3 rounded-xl text-[9px] pointer-events-none opacity-40 backdrop-blur-md font-black">
         {debugLog.map((log, i) => <div key={i} className="text-[#39FF14]">{log}</div>)}
         <div className="mt-2 text-cyan-400 uppercase tracking-tighter">
@@ -384,46 +400,27 @@ const ScaleSensor = ({ onBack }) => {
                     Esquema de Posición
                   </div>
                   <div className="text-[9px] font-black text-white bg-[#39FF14]/20 px-2 py-0.5 rounded border border-[#39FF14]/30">
-                    Traste {Math.min(...challenge.map(n => n.positions[0]?.fret || 99))}
+                    Traste {challenge[0]?.positions[0]?.fret}
                   </div>
                 </div>
                 
                 <div className="relative w-64 h-32 flex items-center justify-center">
-                  <svg viewBox="0 0 240 160" className="w-full h-full opacity-100">
-                    <rect x="0" y="0" width="240" height="160" fill="rgba(255,255,255,0.03)" rx="4" />
-                    
-                    {/* Frets (Expanded to 6 frets for 3NPS patterns) */}
-                    {[0, 40, 80, 120, 160, 200, 240].map((x, i) => (
+                  <svg viewBox="0 0 200 160" className="w-full h-full opacity-100">
+                    <rect x="0" y="0" width="200" height="160" fill="rgba(255,255,255,0.03)" rx="4" />
+                    {[0, 40, 80, 120, 160, 200].map((x, i) => (
                       <line key={i} x1={x} y1="0" x2={x} y2="160" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
                     ))}
-                    
-                    {/* Strings */}
                     {Array.from({length: 6}).map((_, i) => (
-                      <line 
-                        key={i} 
-                        x1="0" y1={15 + i * 26} x2="240" y2={15 + i * 26} 
-                        stroke="rgba(255,255,255,0.2)" 
-                        strokeWidth={0.5 + (i * 0.4)} 
-                      />
+                      <line key={i} x1="0" y1={15 + i * 26} x2="200" y2={15 + i * 26} stroke="rgba(255,255,255,0.2)" strokeWidth={0.5 + (i * 0.4)} />
                     ))}
-
-                    {/* Scale Pattern (Static & Clear) */}
                     {challenge?.map((note, i) => {
                       const pos = note.positions[0];
                       if (!pos) return null;
-                      
-                      const minFret = Math.min(...challenge.map(n => n.positions[0]?.fret || 99));
-                      const localFret = pos.fret - minFret + 1;
-
+                      const baseFret = challenge[0]?.positions[0]?.fret || 0;
+                      const localFret = pos.fret - baseFret + 1;
+                      if (localFret < 1 || localFret > 5) return null;
                       return (
-                        <circle 
-                          key={i}
-                          cx={localFret * 40 - 20} 
-                          cy={15 + (pos.string - 1) * 26} 
-                          r={7} 
-                          fill="#39FF14"
-                          style={{ filter: 'drop-shadow(0 0 5px rgba(57, 255, 20, 0.6))' }}
-                        />
+                        <circle key={i} cx={localFret * 40 - 20} cy={15 + (pos.string - 1) * 26} r={7} fill="#39FF14" style={{ filter: 'drop-shadow(0 0 5px rgba(57, 255, 20, 0.6))' }} />
                       );
                     })}
                   </svg>
