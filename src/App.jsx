@@ -8,6 +8,7 @@ import TempoSense from './TempoSense';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import SPLMeter from './SPLMeter';
 import VostokTuner from './Tuner';
+const ScaleSensor = lazy(() => import('./ScaleSensor'));
 import { TuningForkIcon, VostokLogo, GraphicIcon } from './components/VostokIdentity';
 // Lazy loaded components
 const ImpulseResponse = lazy(() => import('./ImpulseResponse'));
@@ -125,7 +126,7 @@ const PROTAGONISTAS = [
     color: '#7000ff'
   },
   {
-    id: 'deforest',
+    id: 'edison-2',
     nombre: 'LEE DE FOREST',
     titulo: 'Amplificación Electrónica',
     descripcion: 'Su invento, el triodo, permitió amplificar señales eléctricas débiles. Es el ancestro directo de todos los preamplificadores que hoy procesan la señal de audio antes de ser analizada.',
@@ -391,6 +392,11 @@ export default function App() {
       {view === 'tempo' && <TempoSense onBack={() => setView('home')} />}
       {view === 'spectrum' && <SpectrumAnalyzer onBack={() => setView('home')} />}
       {view === 'spl' && <SPLMeter onBack={() => setView('home')} />}
+      {view === 'scales' && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black z-[100] flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-[#39FF14] animate-ping" /></div>}>
+          <ScaleSensor onBack={() => setView('home')} />
+        </Suspense>
+      )}
       {view === 'audioarchive' && <AudioArchive onClose={() => setView('home')} />}
       {view === 'blog' && <ExperimentBlog onBack={() => setView('home')} />}
       {view === 'ir' && (
@@ -431,193 +437,198 @@ export default function App() {
         />
       </div>
 
-      <nav className="fixed top-0 w-full z-40 px-8 py-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5 pt-[max(1.5rem,env(safe-area-inset-top))]" style={{ WebkitBackdropFilter: 'blur(16px)' }}>
-        <div className="flex items-center gap-3 cursor-pointer select-none" onClick={handleSecretTap}>
-          <VostokLogo className="w-10 h-10" />
-          <span className="text-xl tracking-tight uppercase tracking-widest flex items-center">
-            <span className="font-black">Vostok</span>
-            <span className="font-light opacity-60">Labs</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => handleSetView('blog')} 
-            className="px-6 py-2.5 bg-[#39FF14]/5 border border-[#39FF14]/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF14]/10 active:scale-95 transition-all flex items-center gap-2.5 text-[#39FF14]"
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            <span>Blog</span>
-          </button>
-          {!isInstalled && (canInstall || canShowMobile) && (
-            <button 
-              onClick={handleInstall} 
-              aria-label="Descargar aplicación"
-              className="hidden sm:flex px-6 py-2.5 bg-white/5 border border-white/10 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
-            >
-              Instalar App
-            </button>
-          )}
-        </div>
-      </nav>
-
-      <section className="min-h-screen flex flex-col items-center justify-start px-8 text-center relative pt-24 pb-8 z-10">
-        <div className="max-w-7xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between flex-grow py-12">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-10 text-left w-64">
-            <div className="space-y-1">
-              <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2 font-mono">System_Health</div>
-              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#39FF14] animate-pulse shadow-[0_0_8px_#39FF14]" />
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-mono text-white uppercase font-black tracking-widest">Core_Active</span>
-                  <span className="text-[8px] font-mono text-slate-500 uppercase">Latency: 2.4ms</span>
-                </div>
-              </div>
+      {view === 'home' && (
+        <>
+          <nav className="fixed top-0 w-full z-40 px-8 py-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5 pt-[max(1.5rem,env(safe-area-inset-top))]" style={{ WebkitBackdropFilter: 'blur(16px)' }}>
+            <div className="flex items-center gap-3 cursor-pointer select-none" onClick={handleSecretTap}>
+              <VostokLogo className="w-10 h-10" />
+              <span className="text-xl tracking-tight uppercase tracking-widest flex items-center">
+                <span className="font-black">Vostok</span>
+                <span className="font-light opacity-60">Labs</span>
+              </span>
             </div>
-            <div className="space-y-4 border-l-2 border-white/5 pl-6">
-              <div>
-                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Sample_Rate</div>
-                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">48.0 KHz / 24-Bit</div>
-              </div>
-              <div>
-                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Buffer_Size</div>
-                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">4096 Samples</div>
-              </div>
-              <div>
-                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">FFT_Window</div>
-                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Blackman-Harris</div>
-              </div>
-            </div>
-            <div className="pt-6">
-              <div className="text-[8px] font-black text-slate-800 uppercase tracking-[0.5em] mb-4 font-mono">Grid_Reference</div>
-              <svg viewBox="0 0 100 20" className="w-32 opacity-20"><path d="M0 10 H100 M10 5 V15 M30 5 V15 M50 0 V20 M70 5 V15 M90 5 V15" stroke="currentColor" fill="none" strokeWidth="0.5" /></svg>
-            </div>
-          </motion.div>
-
-          <div className="max-w-3xl flex flex-col items-center justify-center">
-            {canShowMobile && (
-              <button onClick={handleInstall} className="sm:hidden mb-6 px-6 py-3 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all">
-                Instalar App
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => handleSetView('blog')} 
+                className="px-6 py-2.5 bg-[#39FF14]/5 border border-[#39FF14]/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF14]/10 active:scale-95 transition-all flex items-center gap-2.5 text-[#39FF14]"
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                <span>Blog</span>
               </button>
-            )}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mb-6">
-              Analog Audio Laboratory
-            </motion.div>
-            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase">
-              Redefiniendo el <br/> Audio Digital
-            </motion.h1>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-sm md:text-lg text-slate-400 max-w-xl mx-auto mb-12 leading-relaxed tracking-tight">
-              Herramientas de grado de estudio con interfaces táctiles diseñadas para la creación musical precisa.
-            </motion.p>
-            <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto mb-16">
-              <motion.button 
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={() => handleSetView('tuner')} 
-                aria-label="Abrir Afinador Vostok"
-                className="flex-1 sm:flex-none px-8 sm:px-10 py-4 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
-                style={{ WebkitBackdropFilter: 'blur(20px)' }}
-              >
-                <TuningForkIcon className="w-6 h-6 text-[#39FF14] group-hover:scale-110 transition-transform" />
-                <div className="text-xl lg:text-2xl leading-none uppercase tracking-tighter flex items-center">
-                  <span className="font-black">Vostok</span>
-                  <span className="font-light opacity-70 ml-1">Tuner</span>
-                </div>
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={() => document.getElementById('herramientas')?.scrollIntoView({behavior: 'smooth'})} 
-                aria-label="Ver más herramientas"
-                className="flex-1 sm:flex-none px-8 sm:px-10 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-widest backdrop-blur-md flex items-center justify-center shadow-lg"
-                style={{ WebkitBackdropFilter: 'blur(20px)' }}
-              >
-                Más herramientas
-              </motion.button>
-            </div>
-          </div>
-
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-10 text-right w-64 items-end">
-            <div className="space-y-1">
-              <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2 font-mono">Engine_Telemetry</div>
-              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md">
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-mono text-cyan-400 uppercase font-black tracking-widest">DSP_STABLE</span>
-                  <span className="text-[8px] font-mono text-slate-500 uppercase">Jitter: 0.02ms</span>
-                </div>
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_#06b6d4]" />
-              </div>
-            </div>
-            <div className="space-y-4 border-r-2 border-white/5 pr-6">
-              <div>
-                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Processor</div>
-                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Web_Audio_V2</div>
-              </div>
-              <div>
-                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Visual_Render</div>
-                <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Canvas_Hardware_Accel</div>
-              </div>
-              <div>
-                <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Build_Stamp</div>
-                <div className="text-[11px] font-mono text-slate-500 uppercase font-bold tracking-wider">2026.05.08_PRO</div>
-              </div>
-            </div>
-            <div className="pt-6 flex flex-col items-end">
-              <div className="text-[8px] font-black text-slate-800 uppercase tracking-[0.5em] mb-4 font-mono">Coordinate_System</div>
-              <div className="relative w-32 h-20 border border-white/5 rounded-lg overflow-hidden opacity-30">
-                <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
-                <motion.div animate={{ x: [0, 120, 0], y: [0, 80, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="w-1 h-1 bg-[#39FF14] rounded-full shadow-[0_0_5px_#39FF14]" />
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.5 }} className="flex flex-col items-center pointer-events-none mb-4">
-          <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#39FF14] mb-2 drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">Sigue el pulso</span>
-          <div className="relative h-12 w-[1px] bg-white/10 overflow-hidden">
-            <motion.div animate={{ y: [-48, 48], opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-[#39FF14] to-transparent shadow-[0_0_8px_#39FF14]" />
-          </div>
-          <ChevronDown className="w-4 h-4 text-[#39FF14] mt-1 drop-shadow-[0_0_5px_rgba(57,255,20,0.8)]" />
-        </motion.div>
-      </section>
-
-      <SoundScienceSection onOpenArchive={() => handleSetView('audioarchive')} />
-
-      <section id="herramientas" className="py-24 relative px-8 bg-black z-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 flex flex-col items-center">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 text-white uppercase tracking-[0.1em]">Más herramientas</h2>
-            <div className="max-w-2xl">
-              <p className="text-slate-400 text-xl font-medium leading-relaxed italic font-bold">"El afinador es solo el comienzo"</p>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mt-6 font-bold">— Vostok Lab</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[
-              { t: "Tuner", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
-              { t: "Tempo", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
-              { t: "Spectrum", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
-              { t: "SPL Meter", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') },
-              { t: "IR Measurer", s: "ALFA", c: "#39FF14", i: Activity, action: () => handleSetView('ir') },
-              { t: "Blog", s: "NUEVO", c: "#39FF14", i: Terminal, action: () => handleSetView('blog') }
-            ].map((app, i) => {
-              const Icon = app.i;
-              return (
+              {!isInstalled && (canInstall || canShowMobile) && (
                 <button 
-                  key={i} onClick={app.action} aria-label={`Explorar Vostok ${app.t}`}
-                  className="text-left p-6 rounded-[2rem] bg-[#080808] border border-white/5 hover:border-[#39FF14]/20 transition-all flex flex-col group active:scale-[0.95] relative overflow-hidden"
+                  onClick={handleInstall} 
+                  aria-label="Descargar aplicación"
+                  className="hidden sm:flex px-6 py-2.5 bg-white/5 border border-white/10 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 border transition-transform group-hover:scale-110" style={{ backgroundColor: `${app.c}10`, borderColor: `${app.c}20` }}>
-                    <Icon className="w-5 h-5" style={{ color: app.c }} />
-                  </div>
-                  <div className="flex flex-col">
-                    <h3 className="text-xs tracking-[0.2em] uppercase font-black text-white group-hover:text-[#39FF14] transition-colors">{app.t}</h3>
-                    <div className="mt-2 inline-flex self-start px-3 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border transition-colors font-bold" style={{ backgroundColor: `${app.c}10`, color: app.c, borderColor: `${app.c}20` }}>{app.s}</div>
-                  </div>
+                  Instalar App
                 </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+              )}
+            </div>
+          </nav>
 
-      <Footer onInfoClick={handleInfoClick} />
+          <section className="min-h-screen flex flex-col items-center justify-start px-8 text-center relative pt-24 pb-8 z-10">
+            <div className="max-w-7xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between flex-grow py-12">
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-10 text-left w-64">
+                <div className="space-y-1">
+                  <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2 font-mono">System_Health</div>
+                  <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#39FF14] animate-pulse shadow-[0_0_8px_#39FF14]" />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono text-white uppercase font-black tracking-widest">Core_Active</span>
+                      <span className="text-[8px] font-mono text-slate-500 uppercase">Latency: 2.4ms</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4 border-l-2 border-white/5 pl-6">
+                  <div>
+                    <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Sample_Rate</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">48.0 KHz / 24-Bit</div>
+                  </div>
+                  <div>
+                    <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Buffer_Size</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">4096 Samples</div>
+                  </div>
+                  <div>
+                    <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">FFT_Window</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Blackman-Harris</div>
+                  </div>
+                </div>
+                <div className="pt-6">
+                  <div className="text-[8px] font-black text-slate-800 uppercase tracking-[0.5em] mb-4 font-mono">Grid_Reference</div>
+                  <svg viewBox="0 0 100 20" className="w-32 opacity-20"><path d="M0 10 H100 M10 5 V15 M30 5 V15 M50 0 V20 M70 5 V15 M90 5 V15" stroke="currentColor" fill="none" strokeWidth="0.5" /></svg>
+                </div>
+              </motion.div>
+
+              <div className="max-w-3xl flex flex-col items-center justify-center">
+                {canShowMobile && (
+                  <button onClick={handleInstall} className="sm:hidden mb-6 px-6 py-3 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-full text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all">
+                    Instalar App
+                  </button>
+                )}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mb-6">
+                  Analog Audio Laboratory
+                </motion.div>
+                <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500 uppercase">
+                  Redefiniendo el <br/> Audio Digital
+                </motion.h1>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-sm md:text-lg text-slate-400 max-w-xl mx-auto mb-12 leading-relaxed tracking-tight">
+                  Herramientas de grado de estudio con interfaces táctiles diseñadas para la creación musical precisa.
+                </motion.p>
+                <div className="flex flex-row flex-wrap gap-4 justify-center w-full sm:w-auto mb-16">
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSetView('tuner')} 
+                    aria-label="Abrir Afinador Vostok"
+                    className="flex-1 sm:flex-none px-8 sm:px-10 py-4 bg-white/5 border border-purple-500/30 text-white rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.1)] hover:border-purple-500/60 transition-all flex items-center justify-center gap-3 group will-change-transform"
+                    style={{ WebkitBackdropFilter: 'blur(20px)' }}
+                  >
+                    <TuningForkIcon className="w-6 h-6 text-[#39FF14] group-hover:scale-110 transition-transform" />
+                    <div className="text-xl lg:text-2xl leading-none uppercase tracking-tighter flex items-center">
+                      <span className="font-black">Vostok</span>
+                      <span className="font-light opacity-70 ml-1">Tuner</span>
+                    </div>
+                  </motion.button>
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => document.getElementById('herramientas')?.scrollIntoView({behavior: 'smooth'})} 
+                    aria-label="Ver más herramientas"
+                    className="flex-1 sm:flex-none px-8 sm:px-10 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm hover:bg-white/10 transition-all uppercase tracking-widest backdrop-blur-md flex items-center justify-center shadow-lg"
+                    style={{ WebkitBackdropFilter: 'blur(20px)' }}
+                  >
+                    Más herramientas
+                  </motion.button>
+                </div>
+              </div>
+
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-10 text-right w-64 items-end">
+                <div className="space-y-1">
+                  <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2 font-mono">Engine_Telemetry</div>
+                  <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-mono text-cyan-400 uppercase font-black tracking-widest">DSP_STABLE</span>
+                      <span className="text-[8px] font-mono text-slate-500 uppercase">Jitter: 0.02ms</span>
+                    </div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_#06b6d4]" />
+                  </div>
+                </div>
+                <div className="space-y-4 border-r-2 border-white/5 pr-6">
+                  <div>
+                    <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Processor</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Web_Audio_V2</div>
+                  </div>
+                  <div>
+                    <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Visual_Render</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">Canvas_Hardware_Accel</div>
+                  </div>
+                  <div>
+                    <div className="text-[8px] font-black text-slate-700 uppercase tracking-widest mb-1 font-mono">Build_Stamp</div>
+                    <div className="text-[11px] font-mono text-slate-500 uppercase font-bold tracking-wider">2026.05.08_PRO</div>
+                  </div>
+                </div>
+                <div className="pt-6 flex flex-col items-end">
+                  <div className="text-[8px] font-black text-slate-800 uppercase tracking-[0.5em] mb-4 font-mono">Coordinate_System</div>
+                  <div className="relative w-32 h-20 border border-white/5 rounded-lg overflow-hidden opacity-30">
+                    <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+                    <motion.div animate={{ x: [0, 120, 0], y: [0, 80, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="w-1 h-1 bg-[#39FF14] rounded-full shadow-[0_0_5px_#39FF14]" />
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.5 }} className="flex flex-col items-center pointer-events-none mb-4">
+              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#39FF14] mb-2 drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">Sigue el pulso</span>
+              <div className="relative h-12 w-[1px] bg-white/10 overflow-hidden">
+                <motion.div animate={{ y: [-48, 48], opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-[#39FF14] to-transparent shadow-[0_0_8px_#39FF14]" />
+              </div>
+              <ChevronDown className="w-4 h-4 text-[#39FF14] mt-1 drop-shadow-[0_0_5px_rgba(57,255,20,0.8)]" />
+            </motion.div>
+          </section>
+
+          <SoundScienceSection onOpenArchive={() => handleSetView('audioarchive')} />
+
+          <section id="herramientas" className="py-24 relative px-8 bg-black z-10">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-16 flex flex-col items-center">
+                <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 text-white uppercase tracking-[0.1em]">Más herramientas</h2>
+                <div className="max-w-2xl">
+                  <p className="text-slate-400 text-xl font-medium leading-relaxed italic font-bold">"El afinador es solo el comienzo"</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mt-6 font-bold">— Vostok Lab</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+                {[
+                  { t: "Tuner", s: "ACTIVO", c: "#39FF14", i: Activity, action: () => handleSetView('tuner') },
+                  { t: "Scale Sensor", s: "NUEVO", c: "#39FF14", i: Activity, action: () => handleSetView('scales') },
+                  { t: "Tempo", s: "NUEVO", c: "#06b6d4", i: Zap, action: () => handleSetView('tempo') },
+                  { t: "Spectrum", s: "ALFA", c: "#A855F7", i: Waves, action: () => handleSetView('spectrum') },
+                  { t: "SPL Meter", s: "NUEVO", c: "#fbbf24", i: Volume2, action: () => handleSetView('spl') },
+                  { t: "IR Measurer", s: "ALFA", c: "#39FF14", i: Activity, action: () => handleSetView('ir') },
+                  { t: "Blog", s: "NUEVO", c: "#39FF14", i: Terminal, action: () => handleSetView('blog') }
+                ].map((app, i) => {
+                  const Icon = app.i;
+                  return (
+                    <button 
+                      key={i} onClick={app.action} aria-label={`Explorar Vostok ${app.t}`}
+                      className="text-left p-6 rounded-[2rem] bg-[#080808] border border-white/5 hover:border-[#39FF14]/20 transition-all flex flex-col group active:scale-[0.95] relative overflow-hidden"
+                    >
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 border transition-transform group-hover:scale-110" style={{ backgroundColor: `${app.c}10`, borderColor: `${app.c}20` }}>
+                        <Icon className="w-5 h-5" style={{ color: app.c }} />
+                      </div>
+                      <div className="flex flex-col">
+                        <h3 className="text-xs tracking-[0.2em] uppercase font-black text-white group-hover:text-[#39FF14] transition-colors">{app.t}</h3>
+                        <div className="mt-2 inline-flex self-start px-3 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border transition-colors font-bold" style={{ backgroundColor: `${app.c}10`, color: app.c, borderColor: `${app.c}20` }}>{app.s}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <Footer onInfoClick={handleInfoClick} />
+        </>
+      )}
 
       <AnimatePresence>
         {showDiagnosticConsole && <DiagnosticConsole onClose={() => setShowDiagnosticConsole(false)} currentView={view} />}
