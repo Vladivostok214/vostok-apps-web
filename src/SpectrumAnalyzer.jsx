@@ -5,6 +5,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   const [isRunning, setIsRunning] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [windowMode, setWindowMode] = useState('BLACKMAN');
   const [peakFreq, setPeakFreq] = useState("----");
   const [peakMag, setPeakMag] = useState("--.-");
 
@@ -15,6 +16,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   const animationRef = useRef(null);
   const dataArray = useRef(null);
   const smoothedData = useRef(null);
+  const windowBuffer = useRef(null); // Buffer for manual windowing if needed
   const frameCounterRef = useRef(0);
   const hoverRef = useRef({ active: false, x: 0, freq: 0, db: 0 });
 
@@ -456,12 +458,23 @@ export default function SpectrumAnalyzer({ onBack }) {
                 <div className="w-1.5 h-1.5 rounded-full bg-[#39FF14] animate-pulse shadow-[0_0_8px_#39FF14]"></div>
                 VOSTOK SPECTRUM HD
             </h2>
-            <div className="text-[7px] md:text-[8px] font-bold text-slate-500 tracking-[0.2em] uppercase mt-1">Escala Logarítmica • Motor Zero-Copy</div>
+            <div className="text-[7px] md:text-[8px] font-bold text-slate-500 tracking-[0.2em] uppercase mt-1">Escala Logarítmica • {windowMode} Window</div>
         </div>
 
-        <button onClick={() => setIsFrozen(!isFrozen)} className={`w-12 h-12 ${isFrozen ? 'border-[#39FF14] bg-[#39FF14]/10' : 'bg-white/[0.03] border-white/10'} border backdrop-blur-md rounded-2xl flex items-center justify-center transition-all shadow-xl active:scale-95`}>
-            {isFrozen ? <Play className="w-5 h-5 text-[#39FF14]" /> : <Pause className="w-5 h-5 text-white" />}
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => setWindowMode(prev => prev === 'HANN' ? 'BLACKMAN' : 'HANN')} 
+            className={`px-4 h-12 border backdrop-blur-md rounded-2xl flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 group ${windowMode === 'BLACKMAN' ? 'border-[#39FF14]/40 bg-[#39FF14]/10 shadow-[0_0_15px_rgba(57,255,20,0.1)]' : 'bg-white/[0.03] border-white/10'}`}
+          >
+              <span className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">Filter</span>
+              <span className={`text-[10px] font-mono font-black tracking-widest uppercase ${windowMode === 'BLACKMAN' ? 'text-[#39FF14] drop-shadow-[0_0_5px_#39FF14]' : 'text-slate-400'}`}>
+                {windowMode}
+              </span>
+          </button>
+          <button onClick={() => setIsFrozen(!isFrozen)} className={`w-12 h-12 ${isFrozen ? 'border-[#39FF14] bg-[#39FF14]/10' : 'bg-white/[0.03] border-white/10'} border backdrop-blur-md rounded-2xl flex items-center justify-center transition-all shadow-xl active:scale-95`}>
+              {isFrozen ? <Play className="w-5 h-5 text-[#39FF14]" /> : <Pause className="w-5 h-5 text-white" />}
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col gap-5 relative z-10 min-h-0">
