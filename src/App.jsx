@@ -1220,6 +1220,7 @@ export default function App() {
                 ].map((tool, idx) => {
                   const Icon = tool.i;
                   const baseX = idx === 1 ? 36 : idx === 2 ? 84 : 0;
+                  const isTop = idx === 0;
                   return (
                     <div className="relative w-full" key={idx}>
                       <motion.button 
@@ -1238,27 +1239,29 @@ export default function App() {
                         <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 transition-all shrink-0 bg-[#060606] overflow-hidden relative group-hover:border-[#39FF14]/50 group-hover:shadow-[0_0_12px_rgba(57,255,20,0.2)] group-hover:scale-105" style={{ borderColor: `${tool.c}20` }}>
                           <ToolMiniScreen toolKey={tool.key} />
                         </div>
-                      </motion.button>
 
-                      <AnimatePresence>
-                        {hoveredToolKey === tool.key && (
-                          <motion.div 
-                            initial={{ opacity: 0, x: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, x: 0, scale: 1 }}
-                            exit={{ opacity: 0, x: 10, scale: 0.95 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute right-full mr-4 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-right"
-                          >
-                            <div className="flex items-center gap-2 mb-1.5 justify-end">
-                              <span className="text-[9px] font-black uppercase tracking-wider font-mono" style={{ color: tool.c }}>{tool.t}</span>
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tool.c, boxShadow: `0 0 6px ${tool.c}` }} />
-                            </div>
-                            <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans text-right">
-                              {TOOL_REGISTRY[tool.key].desc}
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                        <AnimatePresence>
+                          {hoveredToolKey === tool.key && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: isTop ? -6 : 6, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: isTop ? -6 : 6, scale: 0.95 }}
+                              transition={{ duration: 0.15 }}
+                              className={`absolute right-0 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-right ${
+                                isTop ? 'top-full mt-2' : 'bottom-full mb-2'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1.5 justify-end">
+                                <span className="text-[9px] font-black uppercase tracking-wider font-mono" style={{ color: tool.c }}>{tool.t}</span>
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tool.c, boxShadow: `0 0 6px ${tool.c}` }} />
+                              </div>
+                              <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans text-right">
+                                {TOOL_REGISTRY[tool.key].desc}
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.button>
                     </div>
                   );
                 })}
@@ -1357,6 +1360,7 @@ export default function App() {
                 ].map((tool, idx) => {
                   const Icon = tool.i;
                   const baseX = idx === 1 ? -36 : idx === 2 ? -84 : 0;
+                  const isTop = idx === 0;
                   return (
                     <div className="relative w-full" key={idx}>
                       <motion.button 
@@ -1375,27 +1379,29 @@ export default function App() {
                         <div className="flex flex-col justify-center h-12 overflow-hidden items-start text-left">
                           <span className="text-[11px] font-black uppercase text-white/80 tracking-widest group-hover:text-[#39FF14] transition-colors font-mono">{tool.t}</span>
                         </div>
-                      </motion.button>
 
-                      <AnimatePresence>
-                        {hoveredToolKey === tool.key && (
-                          <motion.div 
-                            initial={{ opacity: 0, x: -10, scale: 0.95 }}
-                            animate={{ opacity: 1, x: 0, scale: 1 }}
-                            exit={{ opacity: 0, x: -10, scale: 0.95 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-left"
-                          >
-                            <div className="flex items-center gap-2 mb-1.5 justify-start">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tool.c, boxShadow: `0 0 6px ${tool.c}` }} />
-                              <span className="text-[9px] font-black uppercase tracking-wider font-mono" style={{ color: tool.c }}>{tool.t}</span>
-                            </div>
-                            <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans text-left">
-                              {TOOL_REGISTRY[tool.key].desc}
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                        <AnimatePresence>
+                          {hoveredToolKey === tool.key && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: isTop ? -6 : 6, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: isTop ? -6 : 6, scale: 0.95 }}
+                              transition={{ duration: 0.15 }}
+                              className={`absolute left-0 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-left ${
+                                isTop ? 'top-full mt-2' : 'bottom-full mb-2'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1.5 justify-start">
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tool.c, boxShadow: `0 0 6px ${tool.c}` }} />
+                                <span className="text-[9px] font-black uppercase tracking-wider font-mono" style={{ color: tool.c }}>{tool.t}</span>
+                              </div>
+                              <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans text-left">
+                                {TOOL_REGISTRY[tool.key].desc}
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.button>
                     </div>
                   );
                 })}
