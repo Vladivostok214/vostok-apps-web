@@ -1194,10 +1194,10 @@ export default function App() {
 
           <section className="min-h-fit lg:min-h-screen flex flex-col items-center justify-start px-8 text-center relative pt-28 lg:pt-32 pb-4 z-10">
             <div className="max-w-6xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between lg:flex-grow py-2 lg:py-6 gap-3 lg:gap-6">
-              {/* LEFT RACK: ACÚSTICA & ESPECTRO */}
+              {/* LEFT RACK: AFINACIÓN & ANÁLISIS ARMÓNICO */}
               <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-left w-64 shrink-0">
                 <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 select-none">
-                  Acústica & Espectro
+                  Afinación & Análisis Armónico
                 </div>
                 {[
                   { key: "scales", t: "Scale Sensor", c: "#39FF14", i: Music, action: () => openToolInfo('scales') },
@@ -1331,10 +1331,10 @@ export default function App() {
                 </motion.div>
               </div>
 
-              {/* RIGHT RACK: METROLOGÍA & REPORTES */}
+              {/* RIGHT RACK: TIEMPO, VOLUMEN & ACÚSTICA */}
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-right w-64 shrink-0 items-end">
                 <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 w-full select-none">
-                  Metrología & Lab
+                  Tiempo, Volumen & Acústica
                 </div>
                 {[
                   { key: "tempo", t: "Tempo Detector", c: "#06b6d4", i: Zap, action: () => openToolInfo('tempo') },
