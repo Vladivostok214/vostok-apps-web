@@ -1243,17 +1243,17 @@ export default function App() {
                       <AnimatePresence>
                         {hoveredToolKey === tool.key && (
                           <motion.div 
-                            initial={{ opacity: 0, x: -10, scale: 0.95 }}
+                            initial={{ opacity: 0, x: 10, scale: 0.95 }}
                             animate={{ opacity: 1, x: 0, scale: 1 }}
-                            exit={{ opacity: 0, x: -10, scale: 0.95 }}
+                            exit={{ opacity: 0, x: 10, scale: 0.95 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-left"
+                            className="absolute right-full mr-4 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-right"
                           >
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tool.c, boxShadow: `0 0 6px ${tool.c}` }} />
+                            <div className="flex items-center gap-2 mb-1.5 justify-end">
                               <span className="text-[9px] font-black uppercase tracking-wider font-mono" style={{ color: tool.c }}>{tool.t}</span>
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tool.c, boxShadow: `0 0 6px ${tool.c}` }} />
                             </div>
-                            <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans">
+                            <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans text-right">
                               {TOOL_REGISTRY[tool.key].desc}
                             </p>
                           </motion.div>
@@ -1380,17 +1380,17 @@ export default function App() {
                       <AnimatePresence>
                         {hoveredToolKey === tool.key && (
                           <motion.div 
-                            initial={{ opacity: 0, x: 10, scale: 0.95 }}
+                            initial={{ opacity: 0, x: -10, scale: 0.95 }}
                             animate={{ opacity: 1, x: 0, scale: 1 }}
-                            exit={{ opacity: 0, x: 10, scale: 0.95 }}
+                            exit={{ opacity: 0, x: -10, scale: 0.95 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute right-full mr-4 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-right"
+                            className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_25px_rgba(57,255,20,0.15)] z-50 pointer-events-none text-left"
                           >
-                            <div className="flex items-center gap-2 mb-1.5 justify-end">
-                              <span className="text-[9px] font-black uppercase tracking-wider font-mono" style={{ color: tool.c }}>{tool.t}</span>
+                            <div className="flex items-center gap-2 mb-1.5 justify-start">
                               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tool.c, boxShadow: `0 0 6px ${tool.c}` }} />
+                              <span className="text-[9px] font-black uppercase tracking-wider font-mono" style={{ color: tool.c }}>{tool.t}</span>
                             </div>
-                            <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans text-right">
+                            <p className="text-[10px] text-slate-300 font-medium leading-relaxed font-sans text-left">
                               {TOOL_REGISTRY[tool.key].desc}
                             </p>
                           </motion.div>
