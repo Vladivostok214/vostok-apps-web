@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Pause, Play, Mic, Maximize2, Minimize2 } from 'lucide-react';
+import { useAudioDevice, routeAudioChannel } from './context/AudioDeviceContext';
 
 export default function SpectrumAnalyzer({ onBack }) {
+  const { selectedDeviceId, selectedChannel } = useAudioDevice();
   const [isRunning, setIsRunning] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -330,9 +332,15 @@ export default function SpectrumAnalyzer({ onBack }) {
 
   const startEngine = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
-      });
+      const constraints = { 
+        audio: { 
+          echoCancellation: false, 
+          noiseSuppression: false, 
+          autoGainControl: false,
+          ...(selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : {})
+        } 
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       audioCtx.current = new (window.AudioContext || window.webkitAudioContext)({
         latencyHint: 'interactive'
       });
@@ -348,7 +356,8 @@ export default function SpectrumAnalyzer({ onBack }) {
       analyser.current.maxDecibels = 0;
 
       const source = audioCtx.current.createMediaStreamSource(stream);
-      source.connect(hp);
+      const routedSource = routeAudioChannel(audioCtx.current, source, selectedChannel);
+      routedSource.connect(hp);
       hp.connect(analyser.current);
 
       dataArray.current = new Uint8Array(analyser.current.frequencyBinCount);

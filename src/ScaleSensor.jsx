@@ -8,8 +8,10 @@ import {
 } from './lib/vostok-music-db';
 import { generateChallenge, mapNotesToFretboard } from './lib/scale-engine';
 import { ArrowLeft, Check, ChevronRight, Play } from 'lucide-react';
+import { useAudioDevice, routeAudioChannel } from './context/AudioDeviceContext';
 
 const ScaleSensor = ({ onBack }) => {
+  const { selectedDeviceId, selectedChannel } = useAudioDevice();
   const [status, setStatus] = useState('SYS_IDLE'); // IDLE, COUNTDOWN, PLAYING, SUCCESS
   const [step, setStep] = useState(1);
   const [countdown, setCountdown] = useState(3);
@@ -75,9 +77,16 @@ const ScaleSensor = ({ onBack }) => {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       await audioCtxRef.current.audioWorklet.addModule('/vostok-scale-processor.js');
       
-      streamRef.current = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false, latencyHint: 'interactive' }
-      });
+      const constraints = {
+        audio: { 
+          echoCancellation: false, 
+          autoGainControl: false, 
+          noiseSuppression: false, 
+          latencyHint: 'interactive',
+          ...(selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : {})
+        }
+      };
+      streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
 
       const source = audioCtxRef.current.createMediaStreamSource(streamRef.current);
       workletRef.current = new AudioWorkletNode(audioCtxRef.current, 'vostok-scale-processor');
@@ -102,7 +111,8 @@ const ScaleSensor = ({ onBack }) => {
 
       const silentGain = audioCtxRef.current.createGain();
       silentGain.gain.value = 0;
-      source.connect(workletRef.current);
+      const routedSource = routeAudioChannel(audioCtxRef.current, source, selectedChannel);
+      routedSource.connect(workletRef.current);
       workletRef.current.connect(silentGain);
       silentGain.connect(audioCtxRef.current.destination);
 

@@ -3,10 +3,12 @@ import { ArrowLeft, Activity, Info, BarChart3, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SCALE_INTERVALS, NOTE_NAMES } from './lib/vostok-music-db';
 import { useWakeLock } from './lib/vostok-hooks';
+import { useAudioDevice, routeAudioChannel } from './context/AudioDeviceContext';
 
 const CIRCLE_OF_FIFTHS = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
 
 const HarmonicRadar = ({ onBack }) => {
+  const { selectedDeviceId, selectedChannel } = useAudioDevice();
   const [status, setStatus] = useState('SYS_IDLE'); // IDLE, ACTIVE, REPORT
   const [chromaEnergy, setChromaEnergy] = useState(new Float32Array(12));
   const [analysisData, setAnalysisData] = useState({ root: null, notes: [], mode: 'LISTENING...' });
@@ -33,14 +35,21 @@ const HarmonicRadar = ({ onBack }) => {
         await audioCtxRef.current.resume();
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
-      });
+      const constraints = { 
+        audio: { 
+          echoCancellation: false, 
+          noiseSuppression: false, 
+          autoGainControl: false,
+          ...(selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : {})
+        } 
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       const source = audioCtxRef.current.createMediaStreamSource(stream);
       analyserRef.current = audioCtxRef.current.createAnalyser();
       analyserRef.current.fftSize = 16384;
-      source.connect(analyserRef.current);
+      const routedSource = routeAudioChannel(audioCtxRef.current, source, selectedChannel);
+      routedSource.connect(analyserRef.current);
 
       setStatus('SYS_ACTIVE');
       requestWakeLock();

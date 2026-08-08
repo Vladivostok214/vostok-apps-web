@@ -18,6 +18,7 @@ import ExperimentBlog from './components/ExperimentBlog';
 import Footer from './components/Footer';
 import InfoModal from './components/InfoModal';
 import DiagnosticConsole from './components/DiagnosticConsole';
+import AudioSettingsModal from './components/AudioSettingsModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { initAnalytics, trackEvent } from './lib/analytics';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -292,6 +293,7 @@ export default function App() {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoType, setInfoType] = useState('faq');
   const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [systemErrors, setSystemErrors] = useState([]);
   const [showDiagnosticConsole, setShowDiagnosticConsole] = useState(false);
   const tapCountRef = useRef(0);
@@ -421,6 +423,7 @@ export default function App() {
       )}
 
       <InfoModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} type={infoType} />
+      <AudioSettingsModal isOpen={showAudioSettings} onClose={() => setShowAudioSettings(false)} />
 
       <AnimatePresence>
         {showIOSGuide && (
@@ -469,6 +472,13 @@ export default function App() {
               >
                 <Terminal className="w-3.5 h-3.5" />
                 <span>Blog</span>
+              </button>
+              <button 
+                onClick={() => setShowAudioSettings(true)}
+                aria-label="Configuración de Audio"
+                className="p-2.5 px-4 bg-white/5 border border-white/10 text-slate-400 rounded-full hover:bg-white/10 hover:text-white active:scale-95 transition-all flex items-center justify-center"
+              >
+                <span className="text-[10px] font-black tracking-widest uppercase">I/O</span>
               </button>
               {!isInstalled && (canInstall || canShowMobile) && (
                 <button 

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { registerSW } from 'virtual:pwa-register'
+import { AudioDeviceProvider } from './context/AudioDeviceContext.jsx'
 
 const updateSW = registerSW({
   onNeedRefresh() {
@@ -17,6 +18,8 @@ const updateSW = registerSW({
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <AudioDeviceProvider>
+      <App />
+    </AudioDeviceProvider>
   </StrictMode>,
 )

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Activity, RotateCcw, Info, ShieldCheck, FileUp, Zap, Mic, HardDrive, Waves } from 'lucide-react';
+import { useAudioDevice, routeAudioChannel } from './context/AudioDeviceContext';
 
 export default function SPLMeter({ onBack }) {
+  const { selectedDeviceId, selectedChannel } = useAudioDevice();
   // --- CORE STATES ---
   const [view, setView] = useState('BASIC'); // BASIC, DS38_AUDIT
   const [metrics, setMetrics] = useState({ lp: 20, leq: 20, lpk: 20, lmax: 20 });
@@ -82,13 +84,15 @@ export default function SPLMeter({ onBack }) {
   // --- BASIC METER LOGIC ---
   const initAudio = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const constraints = { 
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
-          autoGainControl: false
+          autoGainControl: false,
+          ...(selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : {})
         } 
-      });
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       audioContext.current = new AudioContext({ 
         sampleRate: 48000,
         latencyHint: 'interactive'
@@ -107,7 +111,8 @@ export default function SPLMeter({ onBack }) {
           }
         }
       };
-      source.connect(dspNode);
+      const routedSource = routeAudioChannel(audioContext.current, source, selectedChannel);
+      routedSource.connect(dspNode);
       setStatus('ACTIVE');
       
       // Store stream for cleanup

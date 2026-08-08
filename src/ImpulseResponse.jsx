@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { ArrowLeft, Activity, Zap, Info, Square } from 'lucide-react';
+import { useAudioDevice, routeAudioChannel } from './context/AudioDeviceContext';
 
 // --- VOSTOK FFT KERNEL (RADIX-2) ---
 const fft = (re, im, invert = false) => {
@@ -157,9 +158,9 @@ export default function ImpulseResponse({ onBack }) {
     });
     
     // Audio Device States
+    const { selectedDeviceId, selectedChannel } = useAudioDevice();
     const [inputs, setInputs] = useState([]);
     const [outputs, setInputsOutputs] = useState([]); // outputs
-    const [selectedInput, setSelectedInput] = useState('default');
     const [selectedOutput, setSelectedOutput] = useState('default');
 
     const fetchDevices = useCallback(async () => {
@@ -216,7 +217,7 @@ export default function ImpulseResponse({ onBack }) {
                     echoCancellation: false, 
                     noiseSuppression: false, 
                     autoGainControl: false,
-                    deviceId: selectedInput !== 'default' ? { exact: selectedInput } : undefined
+                    ...(selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : {})
                 } 
             };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -290,7 +291,8 @@ export default function ImpulseResponse({ onBack }) {
         };
 
         const micSource = audioCtx.current.createMediaStreamSource(streamRef.current);
-        micSource.connect(recorder);
+        const routedSource = routeAudioChannel(audioCtx.current, micSource, selectedChannel);
+        routedSource.connect(recorder);
         recorder.connect(audioCtx.current.destination);
         source.start();
     };
@@ -475,17 +477,6 @@ export default function ImpulseResponse({ onBack }) {
                         
                         {/* Hardware Configuration */}
                         <div className="flex flex-col md:flex-row gap-4 mb-10 w-full max-w-2xl px-4">
-                            <div className="flex-1 flex flex-col gap-2">
-                                <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest pl-2">Entrada (Micrófono)</label>
-                                <select 
-                                    value={selectedInput} 
-                                    onChange={(e) => setSelectedInput(e.target.value)}
-                                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-bold text-slate-300 outline-none focus:border-[#39FF14]/40 transition-colors"
-                                >
-                                    <option value="default">Default Input</option>
-                                    {inputs.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Interface ${d.deviceId.slice(0,5)}`}</option>)}
-                                </select>
-                            </div>
                             <div className="flex-1 flex flex-col gap-2">
                                 <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest pl-2">Salida (Altavoz)</label>
                                 <select 
