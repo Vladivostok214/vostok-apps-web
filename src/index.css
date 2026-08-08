@@ -66,3 +66,13 @@ html, body {
 *::-webkit-scrollbar {
   display: none;
 }
+
+/* GraphicIcon float — replaces Framer Motion overhead (9 instances) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+  will-change: transform;
+}

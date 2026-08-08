@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 
 export const TuningForkIcon = ({ className, strokeColor = "currentColor" }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -17,16 +16,10 @@ export const VostokLogo = ({ className = "w-10 h-10" }) => (
 );
 
 export const GraphicIcon = ({ type, color }) => {
-  const floatVariants = {
-    animate: {
-      y: [0, -12, 0],
-      transition: { duration: 5, repeat: Infinity, ease: "easeInOut" }
-    }
-  };
-  const baseClass = "w-full h-full flex items-center justify-center opacity-30 pointer-events-none";
+  const baseClass = "w-full h-full flex items-center justify-center opacity-30 pointer-events-none animate-float";
   
   return (
-    <motion.div variants={floatVariants} animate="animate" className={baseClass}>
+    <div className={baseClass}>
       {type === 'triangle' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><path d="M50 10 L90 90 L10 90 Z" /><circle cx="50" cy="10" r="2" fill={color} /><line x1="10" y1="90" x2="90" y2="90" strokeDasharray="4 4" /></svg>}
       {type === 'nodes' && <svg viewBox="0 0 100 40" className="w-56 h-32" fill="none" stroke={color} strokeWidth="1.5"><path d="M0 20 Q 25 0, 50 20 T 100 20" /><path d="M0 20 Q 25 40, 50 20 T 100 20" strokeDasharray="2 2" /><circle cx="25" cy="10" r="3" fill={color} /><circle cx="75" cy="10" r="3" fill={color} /></svg>}
       {type === 'symmetry' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1"><circle cx="50" cy="50" r="40" /><path d="M50 10 L50 90 M10 50 L90 50" /><path d="M21 21 L79 79 M21 79 L79 21" strokeDasharray="3 3" /></svg>}
@@ -37,6 +30,6 @@ export const GraphicIcon = ({ type, color }) => {
       {type === 'spectrum' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><line x1="10" y1="90" x2="90" y2="90" /><path d="M10 90 L25 40 L40 80 L55 10 L70 85 L90 90" strokeWidth="2" /><path d="M10 90 L90 90" /></svg>}
       {type === 'correlation' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><path d="M10 50 C 20 20, 30 80, 40 50 C 50 20, 60 80, 70 50 C 80 20, 90 80, 100 50" /><line x1="10" y1="10" x2="10" y2="90" opacity="0.3" /></svg>}
       {type === 'ai' && <svg viewBox="0 0 100 100" className="w-48 h-48" fill="none" stroke={color} strokeWidth="1.5"><circle cx="50" cy="50" r="10" fill={color} fillOpacity="0.2" /><circle cx="20" cy="30" r="4" fill={color} /><circle cx="20" cy="70" r="4" fill={color} /><circle cx="80" cy="30" r="4" fill={color} /><circle cx="80" cy="70" r="4" fill={color} /><line x1="24" y1="33" x2="42" y2="45" /><line x1="24" y1="67" x2="42" y2="55" /><line x1="76" y1="33" x2="58" y2="45" /><line x1="76" y1="67" x2="58" y2="55" /></svg>}
-    </motion.div>
+    </div>
   );
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense, memo, useId } from 'react';
 import { 
   Activity, Check, Settings, Upload, Waves, X, ChevronRight, 
   Smartphone, LayoutGrid, Plus, Minus, ArrowLeft, 
@@ -84,6 +84,24 @@ const usePWAInstall = () => {
   const canShowMobile = !isInstalled && isMobileBrowser;
   
   return { canInstall: !!installPrompt, canShowMobile, installApp, isInstalled };
+};
+
+// Monta el componente solo cuando el placeholder entra al viewport.
+// Evita que secciones off-screen arranquen sus animaciones de Framer Motion.
+const useLazySection = (rootMargin = '200px') => {
+  const [shouldRender, setShouldRender] = useState(false);
+  const placeholderRef = useRef(null);
+  useEffect(() => {
+    const el = placeholderRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setShouldRender(true); observer.disconnect(); } },
+      { rootMargin }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [rootMargin]);
+  return { shouldRender, placeholderRef };
 };
 
 const PROTAGONISTAS = [
@@ -303,7 +321,10 @@ const HitoCard = ({ hito, diff, isMobile, onClick, hitoIndex, totalHitos }) => {
 };
 
 // --- HIGH-FIDELITY ACTIVE MINI SCREEN WIDGETS ---
-const ToolMiniScreen = ({ toolKey }) => {
+// React.memo: evita re-renders cuando solo cambia hoveredToolKey u otros estados de App
+const ToolMiniScreen = memo(({ toolKey }) => {
+  // useId: garantiza IDs únicos por instancia para evitar <defs id> duplicados en el DOM
+  const uid = useId().replace(/:/g, '-');
   switch (toolKey) {
     case 'tuner':
       return (
@@ -473,7 +494,7 @@ const ToolMiniScreen = ({ toolKey }) => {
           
           {/* Sonic peaks path (filled area with gradient) */}
           <defs>
-            <linearGradient id="specGrad" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`specGrad-${uid}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#39FF14" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.02" />
             </linearGradient>
@@ -482,7 +503,7 @@ const ToolMiniScreen = ({ toolKey }) => {
           {/* Dynamic mountain peaks */}
           <motion.path 
             d="M 2 25 Q 7 24 10 14 Q 13 8 16 18 Q 19 25 22 20 Q 25 12 28 16 Q 32 25 38 25" 
-            fill="url(#specGrad)" 
+            fill={`url(#specGrad-${uid})`} 
           />
           <motion.path 
             d="M 2 25 Q 7 24 10 14 Q 13 8 16 18 Q 19 25 22 20 Q 25 12 28 16 Q 32 25 38 25" 
@@ -623,7 +644,7 @@ const ToolMiniScreen = ({ toolKey }) => {
     default:
       return null;
   }
-};
+});
 
 // --- LANDING COMPONENTS ---
 function SoundScienceSection({ onOpenArchive }) {
@@ -839,6 +860,26 @@ function BlogPreviewSection({ onOpenPost }) {
       </div>
     </section>
   );
+}
+
+// --- LAZY SECTION WRAPPERS ---
+// Estas funciones envuelven las secciones del scroll en un IntersectionObserver.
+// El componente real NO se monta hasta que el usuario se acerca al área,
+// por lo tanto ninguna de sus animaciones de Framer Motion corre en el initial load.
+function LazySoundScienceSection({ onOpenArchive }) {
+  const { shouldRender, placeholderRef } = useLazySection('300px');
+  if (!shouldRender) {
+    return <div ref={placeholderRef} style={{ minHeight: '600px' }} />;
+  }
+  return <SoundScienceSection onOpenArchive={onOpenArchive} />;
+}
+
+function LazyBlogPreviewSection({ onOpenPost }) {
+  const { shouldRender, placeholderRef } = useLazySection('200px');
+  if (!shouldRender) {
+    return <div ref={placeholderRef} style={{ minHeight: '400px' }} />;
+  }
+  return <BlogPreviewSection onOpenPost={onOpenPost} />;
 }
 
 export default function App() {
@@ -1352,9 +1393,9 @@ export default function App() {
             </motion.div>
           </section>
 
-          <SoundScienceSection onOpenArchive={() => handleSetView('audioarchive')} />
+          <LazySoundScienceSection onOpenArchive={() => handleSetView('audioarchive')} />
 
-          <BlogPreviewSection onOpenPost={(postId) => {
+          <LazyBlogPreviewSection onOpenPost={(postId) => {
             setInitialBlogPostId(postId);
             setView('blog');
           }} />
