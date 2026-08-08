@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Pause, Play, Mic, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Mic, Maximize2, Minimize2 } from 'lucide-react';
 import { useAudioDevice, routeAudioChannel } from './context/AudioDeviceContext';
 
 export default function SpectrumAnalyzer({ onBack }) {
@@ -8,6 +8,7 @@ export default function SpectrumAnalyzer({ onBack }) {
   const [isFrozen, setIsFrozen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [windowMode, setWindowMode] = useState('BLACKMAN');
+  const [responseMode, setResponseMode] = useState('R50');
   const [peakFreq, setPeakFreq] = useState("----");
   const [peakMag, setPeakMag] = useState("--.-");
 
@@ -18,9 +19,10 @@ export default function SpectrumAnalyzer({ onBack }) {
   const animationRef = useRef(null);
   const dataArray = useRef(null);
   const smoothedData = useRef(null);
-  const windowBuffer = useRef(null); // Buffer for manual windowing if needed
+  const windowBuffer = useRef(null);
   const frameCounterRef = useRef(0);
   const hoverRef = useRef({ active: false, x: 0, freq: 0, db: 0 });
+  const responseModeRef = useRef('R50');
 
   // WebGL Resources
   const glRef = useRef(null);
@@ -197,8 +199,14 @@ export default function SpectrumAnalyzer({ onBack }) {
       }
 
       // --- VOSTOK ANALOG BALLISTICS: ATTACK & RELEASE ---
-      const attack = 0.85; // Faster rise
-      const release = 0.12; // Slower fall for musicality
+      // Response times mapped to PAZ Analyzer standard (50ms–5000ms)
+      // factor = 1 - exp(-dt/τ) where dt ≈ 16.67ms at 60fps
+      const ballistics = {
+        R50:   { attack: 0.85, release: 0.28  }, // τ=50ms   — fast
+        R500:  { attack: 0.82, release: 0.033 }, // τ=500ms  — mid
+        R5000: { attack: 0.78, release: 0.003 }, // τ=5000ms — slow accumulation
+      };
+      const { attack, release } = ballistics[responseModeRef.current] || ballistics.R50;
       
       for (let i = 0; i < dataArray.current.length; i++) {
         const target = dataArray.current[i];
@@ -480,9 +488,27 @@ export default function SpectrumAnalyzer({ onBack }) {
                 {windowMode}
               </span>
           </button>
-          <button onClick={() => setIsFrozen(!isFrozen)} className={`w-12 h-12 ${isFrozen ? 'border-[#39FF14] bg-[#39FF14]/10' : 'bg-white/[0.03] border-white/10'} border backdrop-blur-md rounded-2xl flex items-center justify-center transition-all shadow-xl active:scale-95`}>
-              {isFrozen ? <Play className="w-5 h-5 text-[#39FF14]" /> : <Pause className="w-5 h-5 text-white" />}
-          </button>
+
+          {/* RESPONSE SELECTOR */}
+          <div className="flex flex-col items-center justify-center bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl px-3 py-2 shadow-xl gap-1">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em]">Response</span>
+            <div className="flex gap-1">
+              {[{id:'R50',label:'50'},{id:'R500',label:'500'},{id:'R5000',label:'5k'}].map(({id,label}) => (
+                <button
+                  key={id}
+                  onClick={() => { setResponseMode(id); responseModeRef.current = id; }}
+                  title={id === 'R50' ? '50 ms — Rápido' : id === 'R500' ? '500 ms — Medio' : '5000 ms — Lento'}
+                  className={`px-2 py-0.5 rounded-lg text-[8px] font-black font-mono transition-all ${
+                    responseMode === id
+                      ? 'bg-[#39FF14]/20 text-[#39FF14] shadow-[0_0_8px_rgba(57,255,20,0.3)]'
+                      : 'text-slate-600 hover:text-slate-400'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </header>
 
