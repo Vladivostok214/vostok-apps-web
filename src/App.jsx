@@ -338,6 +338,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
             x1="20" y1="20" x2="26" y2="10" 
             stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round"
             style={{ originX: "20px", originY: "20px" }}
+            initial={{ rotate: 0 }}
             animate={{ rotate: [-4, 6, -1, 3, -5, -4] }}
             transition={{ repeat: Infinity, duration: 2.0, ease: "easeInOut" }}
           />
@@ -352,6 +353,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
           <motion.path 
             d="M 31 25 L 35 25 L 33 29 Z" 
             fill="#06b6d4" 
+            initial={{ opacity: 0.4 }}
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
           />
@@ -370,6 +372,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
 
           {/* Scale Note 1: Fret '7' on 2nd string (y=13) */}
           <motion.g 
+            initial={{ scale: 1 }}
             animate={{ scale: [1, 1.12, 1] }}
             transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut", delay: 0.2 }}
             style={{ originX: "10px", originY: "13px" }}
@@ -380,6 +383,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
 
           {/* Scale Note 2: Fret '9' on 4th string (y=23) */}
           <motion.g 
+            initial={{ scale: 1 }}
             animate={{ scale: [1, 1.12, 1] }}
             transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut", delay: 1.0 }}
             style={{ originX: "18px", originY: "23px" }}
@@ -390,6 +394,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
 
           {/* Scale Note 3: Fret '5' on 3rd string (y=18) */}
           <motion.g 
+            initial={{ scale: 1 }}
             animate={{ scale: [1, 1.12, 1] }}
             transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut", delay: 1.8 }}
             style={{ originX: "26px", originY: "18px" }}
@@ -400,6 +405,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
 
           {/* Scale Note 4: Fret '0' on 5th string (y=28) */}
           <motion.g 
+            initial={{ scale: 1 }}
             animate={{ scale: [1, 1.12, 1] }}
             transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut", delay: 2.6 }}
             style={{ originX: "32px", originY: "28px" }}
@@ -412,6 +418,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
           <motion.line 
             x1="0" y1="5" x2="0" y2="35" 
             stroke="#39FF14" strokeWidth="0.5" opacity="0.3"
+            initial={{ x: 4 }}
             animate={{ x: [4, 36, 4] }}
             transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
           />
@@ -468,6 +475,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
                     cx={cx} cy={cy} 
                     r="1.5" 
                     fill="#39FF14" 
+                    initial={{ scale: 1, opacity: 0.8 }}
                     animate={{ scale: [1, 1.25, 1], opacity: [0.8, 1, 0.8] }}
                     transition={{ repeat: Infinity, duration: 3.0, ease: "easeInOut", delay: idx * 0.4 }}
                   />
@@ -511,6 +519,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
             stroke="#39FF14" 
             strokeWidth="1.25" 
             strokeLinecap="round"
+            initial={{ d: "M 2 25 Q 7 24 10 14 Q 13 8 16 18 Q 19 25 22 20 Q 25 12 28 16 Q 32 25 38 25" }}
             animate={{ d: [
               "M 2 25 Q 7 24 10 14 Q 13 8 16 18 Q 19 25 22 20 Q 25 12 28 16 Q 32 25 38 25",
               "M 2 25 Q 7 22 10 18 Q 13 12 16 14 Q 19 22 24 24 Q 25 10 28 12 Q 32 25 38 25",
@@ -530,34 +539,34 @@ const ToolMiniScreen = memo(({ toolKey }) => {
           {/* Sonic topography pixel blocks (Blue-Green cascading spectrogram) */}
           <g opacity="0.8">
             {/* Column 1 */}
-            <motion.rect x="5" y="30" width="4" height="2" rx="0.5" fill="#0033aa" animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.6, delay: 0.1 }} />
-            <motion.rect x="5" y="33" width="4" height="2" rx="0.5" fill="#00ffcc" animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.6, delay: 0.3 }} />
-            <motion.rect x="5" y="36" width="4" height="2" rx="0.5" fill="#39FF14" animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.6, delay: 0.5 }} />
+            <motion.rect x="5" y="30" width="4" height="2" rx="0.5" fill="#0033aa" initial={{ fill: "#0033aa" }} animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.6, delay: 0.1 }} />
+            <motion.rect x="5" y="33" width="4" height="2" rx="0.5" fill="#00ffcc" initial={{ fill: "#00ffcc" }} animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.6, delay: 0.3 }} />
+            <motion.rect x="5" y="36" width="4" height="2" rx="0.5" fill="#39FF14" initial={{ fill: "#39FF14" }} animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.6, delay: 0.5 }} />
 
             {/* Column 2 */}
-            <motion.rect x="11" y="30" width="4" height="2" rx="0.5" fill="#39FF14" animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.2 }} />
-            <motion.rect x="11" y="33" width="4" height="2" rx="0.5" fill="#0033aa" animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.4 }} />
-            <motion.rect x="11" y="36" width="4" height="2" rx="0.5" fill="#00ffcc" animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.6 }} />
+            <motion.rect x="11" y="30" width="4" height="2" rx="0.5" fill="#39FF14" initial={{ fill: "#39FF14" }} animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.2 }} />
+            <motion.rect x="11" y="33" width="4" height="2" rx="0.5" fill="#0033aa" initial={{ fill: "#0033aa" }} animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.4 }} />
+            <motion.rect x="11" y="36" width="4" height="2" rx="0.5" fill="#00ffcc" initial={{ fill: "#00ffcc" }} animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.8, delay: 0.6 }} />
 
             {/* Column 3 (Peak column matching vertical peak) */}
-            <motion.rect x="17" y="30" width="4" height="2" rx="0.5" fill="#00ffcc" animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }} />
-            <motion.rect x="17" y="33" width="4" height="2" rx="0.5" fill="#39FF14" animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.25 }} />
-            <motion.rect x="17" y="36" width="4" height="2" rx="0.5" fill="#0033aa" animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }} />
+            <motion.rect x="17" y="30" width="4" height="2" rx="0.5" fill="#00ffcc" initial={{ fill: "#00ffcc" }} animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }} />
+            <motion.rect x="17" y="33" width="4" height="2" rx="0.5" fill="#39FF14" initial={{ fill: "#39FF14" }} animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.25 }} />
+            <motion.rect x="17" y="36" width="4" height="2" rx="0.5" fill="#0033aa" initial={{ fill: "#0033aa" }} animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }} />
 
             {/* Column 4 */}
-            <motion.rect x="23" y="30" width="4" height="2" rx="0.5" fill="#0033aa" animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 2.0, delay: 0.3 }} />
-            <motion.rect x="23" y="33" width="4" height="2" rx="0.5" fill="#00ffcc" animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 2.0, delay: 0.5 }} />
-            <motion.rect x="23" y="36" width="4" height="2" rx="0.5" fill="#39FF14" animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 2.0, delay: 0.7 }} />
+            <motion.rect x="23" y="30" width="4" height="2" rx="0.5" fill="#0033aa" initial={{ fill: "#0033aa" }} animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 2.0, delay: 0.3 }} />
+            <motion.rect x="23" y="33" width="4" height="2" rx="0.5" fill="#00ffcc" initial={{ fill: "#00ffcc" }} animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 2.0, delay: 0.5 }} />
+            <motion.rect x="23" y="36" width="4" height="2" rx="0.5" fill="#39FF14" initial={{ fill: "#39FF14" }} animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 2.0, delay: 0.7 }} />
 
             {/* Column 5 */}
-            <motion.rect x="29" y="30" width="4" height="2" rx="0.5" fill="#39FF14" animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} />
-            <motion.rect x="29" y="33" width="4" height="2" rx="0.5" fill="#0033aa" animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.6 }} />
-            <motion.rect x="29" y="36" width="4" height="2" rx="0.5" fill="#00ffcc" animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.8 }} />
+            <motion.rect x="29" y="30" width="4" height="2" rx="0.5" fill="#39FF14" initial={{ fill: "#39FF14" }} animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} />
+            <motion.rect x="29" y="33" width="4" height="2" rx="0.5" fill="#0033aa" initial={{ fill: "#0033aa" }} animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.6 }} />
+            <motion.rect x="29" y="36" width="4" height="2" rx="0.5" fill="#00ffcc" initial={{ fill: "#00ffcc" }} animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.8 }} />
 
             {/* Column 6 */}
-            <motion.rect x="35" y="30" width="4" height="2" rx="0.5" fill="#00ffcc" animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.7, delay: 0.5 }} />
-            <motion.rect x="35" y="33" width="4" height="2" rx="0.5" fill="#39FF14" animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.7, delay: 0.7 }} />
-            <motion.rect x="35" y="36" width="4" height="2" rx="0.5" fill="#0033aa" animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.7, delay: 0.9 }} />
+            <motion.rect x="35" y="30" width="4" height="2" rx="0.5" fill="#00ffcc" initial={{ fill: "#00ffcc" }} animate={{ fill: ["#00ffcc", "#39FF14", "#0033aa", "#00ffcc"] }} transition={{ repeat: Infinity, duration: 1.7, delay: 0.5 }} />
+            <motion.rect x="35" y="33" width="4" height="2" rx="0.5" fill="#39FF14" initial={{ fill: "#39FF14" }} animate={{ fill: ["#39FF14", "#0033aa", "#00ffcc", "#39FF14"] }} transition={{ repeat: Infinity, duration: 1.7, delay: 0.7 }} />
+            <motion.rect x="35" y="36" width="4" height="2" rx="0.5" fill="#0033aa" initial={{ fill: "#0033aa" }} animate={{ fill: ["#0033aa", "#00ffcc", "#39FF14", "#0033aa"] }} transition={{ repeat: Infinity, duration: 1.7, delay: 0.9 }} />
           </g>
         </svg>
       );
@@ -568,12 +577,14 @@ const ToolMiniScreen = memo(({ toolKey }) => {
           <motion.circle 
             cx="20" cy="18" r="10" 
             fill="none" stroke="#06b6d4" strokeWidth="1"
+            initial={{ r: 10, opacity: 0.8 }}
             animate={{ r: [6, 16, 8], opacity: [0.8, 0, 0.4] }}
             transition={{ repeat: Infinity, duration: 1.0, ease: "easeOut" }}
           />
           <motion.circle 
             cx="20" cy="18" r="4" 
             fill="#06b6d4" 
+            initial={{ scale: 1 }}
             animate={{ scale: [1, 1.25, 1] }}
             transition={{ repeat: Infinity, duration: 1.0, ease: "easeInOut" }}
           />
@@ -610,6 +621,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
           <motion.line 
             x1="4" y1="29" x2="26" y2="29" 
             stroke="#39FF14" strokeWidth="1.5" strokeLinecap="round"
+            initial={{ x2: 26 }}
             animate={{ x2: [22, 28, 24, 30, 23, 27, 22] }}
             transition={{ repeat: Infinity, duration: 4.0, ease: "easeInOut" }}
           />
@@ -625,6 +637,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
           <motion.path 
             d="M 4 20 L 6 9 L 8 31 L 11 13 L 14 27 L 18 16 L 22 24 L 26 17 L 30 22 L 34 19 L 38 20" 
             fill="none" stroke="#39FF14" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"
+            initial={{ pathLength: 0.15 }}
             animate={{ pathLength: [0.15, 1] }}
             transition={{ repeat: Infinity, duration: 2.0, ease: "easeOut" }}
           />
@@ -636,6 +649,7 @@ const ToolMiniScreen = memo(({ toolKey }) => {
           <motion.circle 
             cx="4" cy="20" r="2" 
             fill="#ffffff" 
+            initial={{ scale: 1, opacity: 1 }}
             animate={{ scale: [1, 2.5, 1], opacity: [1, 0, 1] }}
             transition={{ repeat: Infinity, duration: 1.0, ease: "easeOut" }}
           />
