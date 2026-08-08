@@ -1124,8 +1124,12 @@ export default function App() {
       {view === 'home' && (
         <>
           <nav className="fixed top-0 w-full z-40 px-5 sm:px-8 py-4 sm:py-5 flex justify-between items-center bg-black/85 backdrop-blur-md border-b border-white/5 pt-[max(1.2rem,env(safe-area-inset-top))]" style={{ WebkitBackdropFilter: 'blur(16px)' }}>
-            <div className="flex items-center" onClick={handleSecretTap}>
-              <VostokLogo className="w-9 h-9 sm:w-10 sm:h-10 cursor-pointer" />
+            <div className="flex items-center gap-3 cursor-pointer select-none" onClick={handleSecretTap}>
+              <VostokLogo className="w-9 h-9 sm:w-10 sm:h-10" />
+              <div className="flex flex-col text-left">
+                <span className="font-mono text-xs sm:text-sm font-black tracking-[0.25em] text-white uppercase leading-none">VOSTOK</span>
+                <span className="font-mono text-[7px] sm:text-[8px] font-bold tracking-[0.35em] text-cyan-400/80 uppercase leading-none mt-1">LABS // V1.1.0</span>
+              </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <button 
