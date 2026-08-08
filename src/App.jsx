@@ -1207,69 +1207,41 @@ export default function App() {
           </div>
 
           <section className="min-h-fit lg:min-h-screen flex flex-col items-center justify-start px-8 text-center relative pt-28 lg:pt-32 pb-4 z-10">
-            <div className="max-w-6xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between lg:flex-grow py-2 lg:py-6 gap-3 lg:gap-6">
+            <div className="max-w-6xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between lg:flex-grow py-2 lg:py-6 gap-3 lg:gap-6 relative">
               {/* LEFT RACK: AFINACIÓN & ANÁLISIS ARMÓNICO */}
-              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col justify-between text-left w-64 shrink-0 self-stretch min-h-[420px]">
-                <div className="flex flex-col gap-5">
-                  <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 select-none">
-                    Afinación & Análisis Armónico
-                  </div>
-                  {[
-                    { key: "scales", t: "Scale Sensor", c: "#39FF14", i: Music, action: () => openToolInfo('scales') },
-                    { key: "radar", t: "Harmonic Radar", c: "#39FF14", i: Waves, action: () => openToolInfo('radar') },
-                    { key: "spectrum", t: "Spectrum", c: "#A855F7", i: Waves, action: () => openToolInfo('spectrum') },
-                  ].map((tool, idx) => {
-                    const Icon = tool.i;
-                    const baseX = idx === 1 ? 36 : idx === 2 ? 84 : 0;
-                    return (
-                      <div className="relative w-full" key={idx}>
-                        <motion.button 
-                          animate={{ x: baseX }}
-                          whileHover={{ x: baseX + 6 }} 
-                          whileTap={{ scale: 0.98 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                          onMouseEnter={() => setHoveredToolKey(tool.key)}
-                          onMouseLeave={() => setHoveredToolKey(null)}
-                          onClick={tool.action}
-                          className="w-full text-left p-1 rounded-xl transition-all flex items-center justify-end gap-3 group cursor-pointer relative"
-                        >
-                          <div className="flex flex-col justify-center h-12 overflow-hidden text-right">
-                            <span className="text-[11px] font-black uppercase text-white/80 tracking-widest group-hover:text-[#39FF14] transition-colors font-mono">{tool.t}</span>
-                          </div>
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 transition-all shrink-0 bg-[#060606] overflow-hidden relative group-hover:border-[#39FF14]/50 group-hover:shadow-[0_0_12px_rgba(57,255,20,0.2)] group-hover:scale-105" style={{ borderColor: `${tool.c}20` }}>
-                            <ToolMiniScreen toolKey={tool.key} />
-                          </div>
-                        </motion.button>
-                      </div>
-                    );
-                  })}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-left w-64 shrink-0">
+                <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 select-none">
+                  Afinación & Análisis Armónico
                 </div>
-
-                {/* BOTTOM LEFT CORNER HUD INSPECTOR */}
-                <div className="min-h-[120px] flex items-end mt-4">
-                  <AnimatePresence mode="wait">
-                    {hoveredToolKey && ['scales', 'radar', 'spectrum'].includes(hoveredToolKey) && (
-                      <motion.div 
-                        key={hoveredToolKey}
-                        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                        transition={{ duration: 0.2 }}
-                        className="w-full p-4 rounded-2xl bg-black/90 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_30px_rgba(57,255,20,0.12)] pointer-events-none text-left"
+                {[
+                  { key: "scales", t: "Scale Sensor", c: "#39FF14", i: Music, action: () => openToolInfo('scales') },
+                  { key: "radar", t: "Harmonic Radar", c: "#39FF14", i: Waves, action: () => openToolInfo('radar') },
+                  { key: "spectrum", t: "Spectrum", c: "#A855F7", i: Waves, action: () => openToolInfo('spectrum') },
+                ].map((tool, idx) => {
+                  const Icon = tool.i;
+                  const baseX = idx === 1 ? 36 : idx === 2 ? 84 : 0;
+                  return (
+                    <div className="relative w-full" key={idx}>
+                      <motion.button 
+                        animate={{ x: baseX }}
+                        whileHover={{ x: baseX + 6 }} 
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        onMouseEnter={() => setHoveredToolKey(tool.key)}
+                        onMouseLeave={() => setHoveredToolKey(null)}
+                        onClick={tool.action}
+                        className="w-full text-left p-1 rounded-xl transition-all flex items-center justify-end gap-3 group cursor-pointer relative"
                       >
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TOOL_REGISTRY[hoveredToolKey].color, boxShadow: `0 0 8px ${TOOL_REGISTRY[hoveredToolKey].color}` }} />
-                          <span className="text-[9px] font-black uppercase tracking-widest font-mono" style={{ color: TOOL_REGISTRY[hoveredToolKey].color }}>
-                            {TOOL_REGISTRY[hoveredToolKey].tag}
-                          </span>
+                        <div className="flex flex-col justify-center h-12 overflow-hidden text-right">
+                          <span className="text-[11px] font-black uppercase text-white/80 tracking-widest group-hover:text-[#39FF14] transition-colors font-mono">{tool.t}</span>
                         </div>
-                        <p className="text-[10.5px] text-slate-300 font-medium leading-relaxed font-sans">
-                          {TOOL_REGISTRY[hoveredToolKey].desc}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 transition-all shrink-0 bg-[#060606] overflow-hidden relative group-hover:border-[#39FF14]/50 group-hover:shadow-[0_0_12px_rgba(57,255,20,0.2)] group-hover:scale-105" style={{ borderColor: `${tool.c}20` }}>
+                          <ToolMiniScreen toolKey={tool.key} />
+                        </div>
+                      </motion.button>
+                    </div>
+                  );
+                })}
               </motion.div>
 
               {/* CENTRAL RACK: LOGO & FLAGSHIP TUNER */}
@@ -1354,68 +1326,92 @@ export default function App() {
               </div>
 
               {/* RIGHT RACK: TIEMPO, VOLUMEN & ACÚSTICA */}
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col justify-between text-right w-64 shrink-0 items-end self-stretch min-h-[420px]">
-                <div className="flex flex-col gap-5 w-full items-end">
-                  <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 w-full select-none text-right">
-                    Tiempo, Volumen & Acústica
-                  </div>
-                  {[
-                    { key: "tempo", t: "Tempo Detector", c: "#06b6d4", i: Zap, action: () => openToolInfo('tempo') },
-                    { key: "spl", t: "SPL Meter", c: "#fbbf24", i: Volume2, action: () => openToolInfo('spl') },
-                    { key: "ir", t: "Impulse Response", c: "#39FF14", i: Activity, action: () => openToolInfo('ir') },
-                  ].map((tool, idx) => {
-                    const Icon = tool.i;
-                    const baseX = idx === 1 ? -36 : idx === 2 ? -84 : 0;
-                    return (
-                      <div className="relative w-full" key={idx}>
-                        <motion.button 
-                          animate={{ x: baseX }}
-                          whileHover={{ x: baseX - 6 }} 
-                          whileTap={{ scale: 0.98 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                          onMouseEnter={() => setHoveredToolKey(tool.key)}
-                          onMouseLeave={() => setHoveredToolKey(null)}
-                          onClick={tool.action}
-                          className="w-full text-right p-1 rounded-xl transition-all flex items-center justify-start gap-3 group cursor-pointer relative"
-                        >
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 transition-all shrink-0 bg-[#060606] overflow-hidden relative group-hover:border-[#39FF14]/50 group-hover:shadow-[0_0_12px_rgba(57,255,20,0.2)] group-hover:scale-105" style={{ borderColor: `${tool.c}20` }}>
-                            <ToolMiniScreen toolKey={tool.key} />
-                          </div>
-                          <div className="flex flex-col justify-center h-12 overflow-hidden items-start text-left">
-                            <span className="text-[11px] font-black uppercase text-white/80 tracking-widest group-hover:text-[#39FF14] transition-colors font-mono">{tool.t}</span>
-                          </div>
-                        </motion.button>
-                      </div>
-                    );
-                  })}
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-right w-64 shrink-0 items-end">
+                <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 w-full select-none">
+                  Tiempo, Volumen & Acústica
                 </div>
-
-                {/* BOTTOM RIGHT CORNER HUD INSPECTOR */}
-                <div className="min-h-[120px] flex items-end mt-4 w-full">
-                  <AnimatePresence mode="wait">
-                    {hoveredToolKey && ['tempo', 'spl', 'ir'].includes(hoveredToolKey) && (
-                      <motion.div 
-                        key={hoveredToolKey}
-                        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                        transition={{ duration: 0.2 }}
-                        className="w-full p-4 rounded-2xl bg-black/90 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_30px_rgba(57,255,20,0.12)] pointer-events-none text-right"
+                {[
+                  { key: "tempo", t: "Tempo Detector", c: "#06b6d4", i: Zap, action: () => openToolInfo('tempo') },
+                  { key: "spl", t: "SPL Meter", c: "#fbbf24", i: Volume2, action: () => openToolInfo('spl') },
+                  { key: "ir", t: "Impulse Response", c: "#39FF14", i: Activity, action: () => openToolInfo('ir') },
+                ].map((tool, idx) => {
+                  const Icon = tool.i;
+                  const baseX = idx === 1 ? -36 : idx === 2 ? -84 : 0;
+                  return (
+                    <div className="relative w-full" key={idx}>
+                      <motion.button 
+                        animate={{ x: baseX }}
+                        whileHover={{ x: baseX - 6 }} 
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        onMouseEnter={() => setHoveredToolKey(tool.key)}
+                        onMouseLeave={() => setHoveredToolKey(null)}
+                        onClick={tool.action}
+                        className="w-full text-right p-1 rounded-xl transition-all flex items-center justify-start gap-3 group cursor-pointer relative"
                       >
-                        <div className="flex items-center gap-2 mb-1.5 justify-end">
-                          <span className="text-[9px] font-black uppercase tracking-widest font-mono" style={{ color: TOOL_REGISTRY[hoveredToolKey].color }}>
-                            {TOOL_REGISTRY[hoveredToolKey].tag}
-                          </span>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TOOL_REGISTRY[hoveredToolKey].color, boxShadow: `0 0 8px ${TOOL_REGISTRY[hoveredToolKey].color}` }} />
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 transition-all shrink-0 bg-[#060606] overflow-hidden relative group-hover:border-[#39FF14]/50 group-hover:shadow-[0_0_12px_rgba(57,255,20,0.2)] group-hover:scale-105" style={{ borderColor: `${tool.c}20` }}>
+                          <ToolMiniScreen toolKey={tool.key} />
                         </div>
-                        <p className="text-[10.5px] text-slate-300 font-medium leading-relaxed font-sans text-right">
-                          {TOOL_REGISTRY[hoveredToolKey].desc}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        <div className="flex flex-col justify-center h-12 overflow-hidden items-start text-left">
+                          <span className="text-[11px] font-black uppercase text-white/80 tracking-widest group-hover:text-[#39FF14] transition-colors font-mono">{tool.t}</span>
+                        </div>
+                      </motion.button>
+                    </div>
+                  );
+                })}
               </motion.div>
+
+              {/* HUD INSPECTOR — BOTTOM LEFT CORNER */}
+              <div className="hidden lg:block absolute bottom-[-10px] left-0 w-64 z-50 pointer-events-none">
+                <AnimatePresence mode="wait">
+                  {hoveredToolKey && ['scales', 'radar', 'spectrum'].includes(hoveredToolKey) && (
+                    <motion.div 
+                      key={hoveredToolKey}
+                      initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.2 }}
+                      className="w-full p-4 rounded-2xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_30px_rgba(57,255,20,0.15)] text-left"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TOOL_REGISTRY[hoveredToolKey].color, boxShadow: `0 0 8px ${TOOL_REGISTRY[hoveredToolKey].color}` }} />
+                        <span className="text-[9px] font-black uppercase tracking-widest font-mono" style={{ color: TOOL_REGISTRY[hoveredToolKey].color }}>
+                          {TOOL_REGISTRY[hoveredToolKey].tag}
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-300 font-medium leading-relaxed font-sans">
+                        {TOOL_REGISTRY[hoveredToolKey].desc}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* HUD INSPECTOR — BOTTOM RIGHT CORNER */}
+              <div className="hidden lg:block absolute bottom-[-10px] right-0 w-64 z-50 pointer-events-none">
+                <AnimatePresence mode="wait">
+                  {hoveredToolKey && ['tempo', 'spl', 'ir'].includes(hoveredToolKey) && (
+                    <motion.div 
+                      key={hoveredToolKey}
+                      initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.2 }}
+                      className="w-full p-4 rounded-2xl bg-black/95 border border-[#39FF14]/30 backdrop-blur-2xl shadow-[0_0_30px_rgba(57,255,20,0.15)] text-right"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5 justify-end">
+                        <span className="text-[9px] font-black uppercase tracking-widest font-mono" style={{ color: TOOL_REGISTRY[hoveredToolKey].color }}>
+                          {TOOL_REGISTRY[hoveredToolKey].tag}
+                        </span>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TOOL_REGISTRY[hoveredToolKey].color, boxShadow: `0 0 8px ${TOOL_REGISTRY[hoveredToolKey].color}` }} />
+                      </div>
+                      <p className="text-[10.5px] text-slate-300 font-medium leading-relaxed font-sans text-right">
+                        {TOOL_REGISTRY[hoveredToolKey].desc}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.5 }} className="flex flex-col items-center pointer-events-none mt-1 lg:mt-6 mb-2">
