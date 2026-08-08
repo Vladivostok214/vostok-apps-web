@@ -57,8 +57,8 @@ const Bibliography = ({ links }) => (
   </div>
 );
 
-export default function ExperimentBlog({ onBack }) {
-  const [selectedPostId, setSelectedPostId] = useState(null);
+export default function ExperimentBlog({ onBack, initialPostId = null }) {
+  const [selectedPostId, setSelectedPostId] = useState(initialPostId);
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [posts] = useState(BLOG_POSTS);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -174,9 +174,15 @@ export default function ExperimentBlog({ onBack }) {
                         </div>
                         <h3 className="text-xl font-black text-white uppercase tracking-tight mb-4 group-hover:text-[#39FF14] transition-colors leading-tight">{post.title}</h3>
                         <p className="text-slate-500 text-sm mb-8 line-clamp-3 font-medium uppercase leading-relaxed">{post.excerpt}</p>
-                        <div className="mt-auto flex items-center gap-2 text-[8px] font-black text-slate-700 uppercase tracking-widest group-hover:text-[#39FF14] transition-colors">
-                          <span>Desclasificar Entrada</span>
-                          <ChevronRight className="w-2.5 h-2.5" />
+                        <div className="mt-auto overflow-hidden h-4 relative w-full">
+                          <div className="flex flex-col transition-transform duration-300 transform translate-y-0 group-hover:-translate-y-4">
+                            <span className="h-4 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-slate-700 transition-colors">
+                              Desclasificar Entrada <ChevronRight className="w-2.5 h-2.5" />
+                            </span>
+                            <span className="h-4 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-[#39FF14] transition-colors">
+                              Leer reporte y experimento <ChevronRight className="w-2.5 h-2.5" />
+                            </span>
+                          </div>
                         </div>
                       </motion.button>
                     );

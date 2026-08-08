@@ -135,6 +135,7 @@ export default function VostokTuner({ onBack }) {
   const [signalStatus, setSignalStatus] = useState('SYS_IDLE');
   const [detectedString, setDetectedString] = useState(null);
   const [isTuned, setIsTuned] = useState(false);
+  const [isClipping, setIsClipping] = useState(false);
 
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -181,9 +182,19 @@ export default function VostokTuner({ onBack }) {
       
       if (shouldUpdateState) {
         let rms = 0;
-        for (let i = 0; i < audioBufferRef.current.length; i++) rms += audioBufferRef.current[i] * audioBufferRef.current[i];
+        let peak = 0;
+        for (let i = 0; i < audioBufferRef.current.length; i++) {
+          const val = audioBufferRef.current[i];
+          rms += val * val;
+          const absVal = Math.abs(val);
+          if (absVal > peak) peak = absVal;
+        }
         rms = Math.sqrt(rms / audioBufferRef.current.length);
         const rmsDb = 20 * Math.log10(Math.max(rms, 0.00001));
+        
+        const clippingActive = peak > 0.95;
+        setIsClipping(clippingActive);
+
         const freq = autoCorrelate(audioBufferRef.current, audioContextRef.current.sampleRate, selectedInstrumentRef.current === 'bass');
         
         if (rmsDb < -45 || freq === -1) {
@@ -292,11 +303,46 @@ export default function VostokTuner({ onBack }) {
       <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(57, 255, 20, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(57, 255, 20, 0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
       {!isListening && (
-        <div className="absolute inset-0 z-[150] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center" onClick={startListening}>
-          <VostokLogo className="w-20 h-20 mb-10 animate-pulse" />
-          <h2 className="text-4xl font-black mb-4 tracking-tighter text-white uppercase">Vostok Tuner</h2>
-          <p className="text-slate-500 text-[10px] tracking-[0.2em] mb-12 uppercase">Toque para iniciar la afinación de alta fidelidad</p>
-          <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="py-3 px-10 border border-white/10 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:bg-white/10 transition-colors">Regresar</button>
+        <div className="absolute inset-0 z-[150] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center" onClick={startListening}>
+          <div className="max-w-md bg-[#050505] border border-white/10 p-10 rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500/10 to-[#39FF14]/10 rounded-[2.5rem] blur opacity-50 group-hover:opacity-100 transition duration-1000"></div>
+            <div className="relative flex flex-col items-center">
+              <VostokLogo className="w-16 h-16 mb-8 animate-pulse text-[#39FF14]" />
+              <h2 className="text-3xl font-black mb-1.5 tracking-tighter text-white uppercase font-sans">Vostok Tuner</h2>
+              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#39FF14] mb-8 drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">Activación de Sensor</span>
+              
+              <p className="text-slate-400 text-xs font-medium leading-relaxed mb-8 max-w-sm">
+                Vostok requiere acceso a tu micrófono o entrada física para analizar el espectro de audio en tiempo real. La señal se procesa estrictamente en local y de forma 100% privada.
+              </p>
+
+              <div className="flex flex-col gap-3.5 w-full mb-10 text-left border-l-2 border-[#39FF14]/30 pl-4">
+                <div className="text-[9px] font-mono text-slate-500 uppercase font-bold tracking-wider flex items-center gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14] shadow-[0_0_6px_#39FF14]" /> Paso 1: Pulsa en "Iniciar Captura"
+                </div>
+                <div className="text-[9px] font-mono text-slate-500 uppercase font-bold tracking-wider flex items-center gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14] shadow-[0_0_6px_#39FF14]" /> Paso 2: Concede permisos de micrófono
+                </div>
+                <div className="text-[9px] font-mono text-slate-500 uppercase font-bold tracking-wider flex items-center gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14] shadow-[0_0_6px_#39FF14]" /> Paso 3: Toca una nota para afinar
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); startListening(); }} 
+                  className="flex-1 py-4 bg-[#39FF14] text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(57,255,20,0.3)] font-bold cursor-pointer"
+                >
+                  Iniciar Captura
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onBack(); }} 
+                  className="flex-1 py-4 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+                >
+                  Regresar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -418,6 +464,21 @@ export default function VostokTuner({ onBack }) {
           
           {/* FREQUENCY DISPLAY */}
           <div className="text-center mb-6 md:mb-12 flex flex-col items-center">
+            {/* DIGITAL CLIP / OVERLOAD BADGE */}
+            <div className="h-6 mb-2">
+              <AnimatePresence>
+                {isClipping && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                    className="px-3 py-1 rounded-md bg-red-500/10 border border-red-500/30 text-red-500 text-[8px] font-black uppercase tracking-[0.3em] font-mono shadow-[0_0_12px_rgba(239,68,68,0.2)] animate-pulse flex items-center gap-1.5"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_6px_#ef4444]" />
+                    AOP_CLIP_WARN / Atenuar Entrada
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <div className="text-[9px] font-black text-[#39FF14] uppercase tracking-[0.4em] mb-2 opacity-60 font-mono">Frecuencia</div>
             <div className="text-5xl font-mono font-black text-white tabular-nums drop-shadow-[0_0_15px_rgba(57,255,20,0.5)]">
               {pitch ? pitch.toFixed(1) : "000.0"}<span className="text-[12px] ml-2 text-[#39FF14]">Hz</span>
