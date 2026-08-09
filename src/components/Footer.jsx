@@ -5,7 +5,7 @@ const Footer = ({ onInfoClick }) => {
   };
 
   return (
-    <footer className="bg-[#010101] border border-white/10 backdrop-blur-md py-16 px-8 z-10 relative mt-24 mx-4 md:mx-8 mb-8 rounded-[2.5rem]">
+    <footer className="w-full relative mt-0 md:mt-12 pt-8 md:pt-32 pb-16 px-8 z-10 bg-gradient-to-b from-transparent via-[#010101]/80 to-[#010101]">
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12">
         
         {/* COL 1: Ayuda */}

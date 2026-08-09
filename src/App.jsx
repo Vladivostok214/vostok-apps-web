@@ -1176,39 +1176,37 @@ export default function App() {
             </div>
           </nav>
 
-          {/* TECHNICAL TELEMETRY BAR */}
-          <div className="fixed top-[68px] lg:top-[81px] left-0 w-full z-30 bg-black/45 border-b border-white/[0.03] py-1.5 px-4 sm:px-8 flex items-center justify-center gap-3 sm:gap-6 lg:gap-8 text-[8px] sm:text-[9px] font-mono tracking-[0.2em] text-slate-500 select-none backdrop-blur-md overflow-x-auto whitespace-nowrap" style={{ WebkitBackdropFilter: 'blur(12px)', scrollbarWidth: 'none' }}>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="w-1 h-1 rounded-full bg-[#39FF14] shadow-[0_0_4px_#39FF14] animate-[pulse_1s_infinite_alternate]" />
-              <span>DSP <span className="hidden sm:inline">ENGINE</span>: <span className="text-white/70">ACTIVE<span className="hidden md:inline"> (ZERO-COPY)</span></span></span>
-            </div>
-            
-            <span className="opacity-30 shrink-0 hidden sm:inline">|</span>
-            <span className="shrink-0 hidden sm:inline">SR: <span className="text-white/70">48.0 KHZ</span></span>
-            
-            <span className="opacity-30 shrink-0 hidden md:inline">|</span>
-            <span className="shrink-0 hidden md:inline">BUF: <span className="text-white/70">512 SAMPLES</span></span>
-            
-            <span className="opacity-30 shrink-0">|</span>
-            <span className="shrink-0">LATENCY: <span className="text-white/70">~10.7 MS</span></span>
-            
-            <span className="opacity-30 shrink-0">|</span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="w-1 h-1 rounded-full bg-[#39FF14] shadow-[0_0_4px_#39FF14] animate-[pulse_1s_infinite_alternate]" />
-              <span>SYS <span className="hidden sm:inline">HEALTH</span>: <span className="text-[#39FF14]/80 font-black">NOMINAL</span></span>
-            </div>
-            
-            <span className="opacity-30 shrink-0 hidden md:inline">|</span>
-            <span className="shrink-0 hidden md:inline">FPS: <span className="text-white/70">60.0</span></span>
-            
-            <span className="opacity-30 shrink-0 hidden lg:inline">|</span>
-            <span className="shrink-0 hidden lg:inline">MODE: <span className="text-white/70">LOCAL-FIRST</span></span>
+          {/* TOOL QUICK-ACCESS BAR */}
+          <div className="fixed top-[68px] lg:top-[81px] left-0 w-full z-30 bg-black/50 border-b border-white/[0.04] py-0.5 px-4 sm:px-6 flex items-center font-mono select-none backdrop-blur-md overflow-x-auto" style={{ WebkitBackdropFilter: 'blur(12px)', scrollbarWidth: 'none' }}>
+            {[
+              { label: 'TUNER', color: '#39FF14', view: 'tuner' },
+              { label: 'SCALE', color: '#39FF14', view: 'scales' },
+              { label: 'RADAR', color: '#39FF14', view: 'radar' },
+              { label: 'SPECTRUM', color: '#A855F7', view: 'spectrum' },
+              { label: 'TEMPO', color: '#06b6d4', view: 'tempo' },
+              { label: 'SPL', color: '#fbbf24', view: 'spl' },
+              { label: 'IMPULSE', color: '#39FF14', view: 'ir' },
+            ].map((tool) => (
+              <button
+                key={tool.view}
+                onClick={() => handleSetView(tool.view)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-none hover:bg-white/[0.05] active:scale-[0.97] transition-all group cursor-pointer shrink-0 first:ml-auto last:mr-auto"
+              >
+                <span 
+                  className="w-1 h-1 rounded-full shrink-0" 
+                  style={{ backgroundColor: tool.color, boxShadow: `0 0 4px ${tool.color}40` }}
+                />
+                <span className="text-[8px] sm:text-[9px] text-slate-500 group-hover:text-white/80 transition-colors font-black uppercase tracking-widest whitespace-nowrap">
+                  {tool.label}
+                </span>
+              </button>
+            ))}
           </div>
 
           <section className="min-h-fit lg:min-h-screen flex flex-col items-center justify-start px-8 text-center relative pt-28 lg:pt-32 pb-4 z-10">
             <div className="max-w-6xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between lg:flex-grow py-2 lg:py-6 gap-3 lg:gap-6">
               {/* LEFT RACK: AFINACIÓN & ANÁLISIS ARMÓNICO */}
-              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-left w-64 shrink-0">
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-left w-64 shrink-0 relative z-20">
                 <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 select-none">
                   Afinación & Análisis Armónico
                 </div>
@@ -1263,7 +1261,7 @@ export default function App() {
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     onClick={() => handleSetView('tuner')} 
                     aria-label="Abrir Afinador Vostok"
-                    className="px-8 py-3.5 bg-[#060606] border border-white/10 text-white rounded-xl backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:border-[#39FF14]/40 transition-all flex items-center justify-center gap-3 group will-change-transform cursor-pointer"
+                    className="px-5 py-2.5 bg-white/[0.02] border border-white/10 text-white rounded-xl backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:border-[#39FF14]/40 transition-all flex items-center justify-center gap-3 group will-change-transform cursor-pointer"
                     style={{ WebkitBackdropFilter: 'blur(20px)' }}
                   >
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center border bg-[#030303] overflow-hidden relative border-white/10 group-hover:border-[#39FF14]/35 shrink-0">
@@ -1323,7 +1321,7 @@ export default function App() {
               </div>
 
               {/* RIGHT RACK: TIEMPO, VOLUMEN & ACÚSTICA */}
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-right w-64 shrink-0 items-end">
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:flex flex-col gap-5 text-right w-64 shrink-0 items-end relative z-20">
                 <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] font-mono border-b border-white/5 pb-2 mb-1.5 w-full select-none">
                   Tiempo, Volumen & Acústica
                 </div>
